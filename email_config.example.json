@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": 587,
+  "sender": "yanivbarshaf@gmail.com",
+  "app_password": "PUT-YOUR-16-CHAR-GMAIL-APP-PASSWORD-HERE",
+  "recipient": "yanivbarshaf@gmail.com"
+}

@@ -1,0 +1,22 @@
+# ── סודות — לעולם לא נשמרים בריפו ──
+email_config.json
+telegram_config.json
+.env
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+
+# ── גיבויי DB וקבצי WAL זמניים (ה-DB עצמו, paper_trades.db, כן נשמר) ──
+paper_trades_backup_*.db
+paper_trades.db-wal
+paper_trades.db-shm
+
+# ── פלטי הרצה / זמני ──
+st_*.txt
+st_*.log
+streamlit*.log
+streamlit*.txt
+email_preview.html
+*.bak

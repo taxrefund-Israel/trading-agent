@@ -1,0 +1,5 @@
+# תלויות מינימליות להרצת המנוע היומי ב-GitHub Actions (ללא streamlit/plotly/ib).
+yfinance>=0.2.40
+pandas>=2.0.0
+ta>=0.11.0
+numpy>=1.24.0

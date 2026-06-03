@@ -1,0 +1,9 @@
+Error parsing config toml. This is most likely due to a syntax error in the config.toml file. Please fix it and try again.
+Traceback (most recent call last):
+  File "C:\Users\yaniv\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\streamlit\config.py", line 2608, in _update_config_with_toml
+    parsed_config_file = toml.loads(raw_toml)
+  File "C:\Users\yaniv\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\toml\decoder.py", line 260, in loads
+    raise TomlDecodeError("Found invalid character in key name: '" +
+                          item + "'. Try quoting the key name.",
+                          original, i)
+toml.decoder.TomlDecodeError: Found invalid character in key name: '['. Try quoting the key name. (line 1 column 2 char 1)

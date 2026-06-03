@@ -1,0 +1,1 @@
+# TASE Intraday Scalping System

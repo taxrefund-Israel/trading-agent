@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "bot_token": "PUT-YOUR-BOT-TOKEN-FROM-BOTFATHER-HERE",
+  "chat_id": "PUT-YOUR-NUMERIC-CHAT-ID-HERE"
+}
