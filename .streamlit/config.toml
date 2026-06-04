@@ -1,0 +1,13 @@
+# מונע את התקיעה של Streamlit 1.5x ב-_on_server_start (קריאות רשת חוסמות בעת
+# הדפסת ה-URL והפעלת ה-watchdog) — אותו תיקון שעבד מקומית.
+# חשוב: לא מגדירים כאן server.address/port — Streamlit Cloud מנהל אותם.
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = true
+fileWatcherType = "none"
+
+[logger]
+hideWelcomeMessage = true
