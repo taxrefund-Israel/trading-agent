@@ -905,27 +905,34 @@ def main():
         idx, stocks = fetch_data()
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    # מעבר בין מסכים — שני כפתורים בעמודות: נערמים אנכית בנייד (תמיד גלויים),
-    # זה לצד זה בדסקטוף. הכפתור הפעיל מודגש (primary).
-    if "view" not in st.session_state:
-        st.session_state["view"] = "signals"
-    nav1, nav2 = st.columns(2)
-    with nav1:
-        if st.button("📡 איתותים חיים", use_container_width=True,
-                     type="primary" if st.session_state["view"] == "signals" else "secondary"):
-            st.session_state["view"] = "signals"
-            st.rerun()
-    with nav2:
-        if st.button("🤖 תיק אוטומטי", use_container_width=True,
-                     type="primary" if st.session_state["view"] == "portfolio" else "secondary"):
-            st.session_state["view"] = "portfolio"
-            st.rerun()
-
-    if st.session_state["view"] == "signals":
+    if is_mobile():
+        # ── נייד: הכל ברצף אחד, בלי ניווט (פתרון פשוט ובטוח לבעיית הלחצנים) ──
         _render_signals_tab(idx, stocks, portfolio_nis, show_all)
-    else:
+        st.markdown("---")
+        st.markdown("## 🤖 תיק אוטומטי")
         snaps, pos_df, trades_df, grlog_df, orders_df = load_paper_data()
         paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx)
+    else:
+        # ── דסקטוף: שני כפתורים למעבר בין המסכים (הפעיל מודגש) ──
+        if "view" not in st.session_state:
+            st.session_state["view"] = "signals"
+        nav1, nav2 = st.columns(2)
+        with nav1:
+            if st.button("📡 איתותים חיים", use_container_width=True,
+                         type="primary" if st.session_state["view"] == "signals" else "secondary"):
+                st.session_state["view"] = "signals"
+                st.rerun()
+        with nav2:
+            if st.button("🤖 תיק אוטומטי", use_container_width=True,
+                         type="primary" if st.session_state["view"] == "portfolio" else "secondary"):
+                st.session_state["view"] = "portfolio"
+                st.rerun()
+
+        if st.session_state["view"] == "signals":
+            _render_signals_tab(idx, stocks, portfolio_nis, show_all)
+        else:
+            snaps, pos_df, trades_df, grlog_df, orders_df = load_paper_data()
+            paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx)
 
 
 def _render_signals_tab(idx, stocks, portfolio_nis, show_all):
