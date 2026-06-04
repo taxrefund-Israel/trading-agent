@@ -28,7 +28,7 @@ def now_il():
 st.set_page_config(
     page_title="ת\"א 125 — איתותי מסחר",
     page_icon="📈",
-    layout="centered",   # פריסה ממורכזת — ידידותית לנייד, נערמת נקי במסכים צרים
+    layout="wide",   # רחב בדסקטופ; בנייד (<730px) ממילא תופס רוחב מלא ונערם טבעית
     initial_sidebar_state="collapsed",   # מתחיל סגור; נפתח בכפתור ההמבורגר
 )
 
