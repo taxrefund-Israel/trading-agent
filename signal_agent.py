@@ -82,6 +82,12 @@ st.markdown("""
     h1 { font-size: 1.4rem !important; }
     h2 { font-size: 1.2rem !important; }
     h3 { font-size: 1.1rem !important; }
+
+    /* בנייד: מסתירים לגמרי את סרגל ההגדרות (לא נחוץ, וגרם ל"מריחה" אנכית) */
+    section[data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapseButton"] { display: none !important; }
   }
 </style>
 """, unsafe_allow_html=True)
