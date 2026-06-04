@@ -48,29 +48,35 @@ st.markdown("""
   .signal-hold  { background:#fff8e6; border-left:4px solid #e67e22; padding:8px; border-radius:4px; }
   .metric-box   { background:#f8f9fa; border-radius:8px; padding:10px; text-align:center; }
 
-  /* ===== התאמה לנייד (Mobile responsiveness) ===== */
+  /* ===== התאמה לנייד (Mobile responsiveness) =====
+     לא תלוי בשמות data-testid (Streamlit שינה אותם בין גרסאות) — מכוון לילדים
+     הישירים של בלוק העמודות, כך שהעמודות נערמות לרוחב מלא ונקראות בבירור. */
   @media (max-width: 640px) {
-    /* פחות שוליים — ניצול מלא של רוחב המסך */
-    .block-container { padding: 0.8rem 0.6rem !important; }
-
-    /* עמודות נערמות יפה במקום להידחס: שתי מטריקות בשורה, תוכן רחב — מלא */
-    div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 0.4rem !important; }
-    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-        flex: 1 1 42% !important; min-width: 42% !important;
+    .block-container, .main .block-container {
+        padding: 0.7rem 0.5rem !important; max-width: 100% !important;
     }
 
-    /* מטריקות בגופן קטן יותר כדי שייכנסו */
-    div[data-testid="stMetricValue"] { font-size: 1.15rem !important; }
-    div[data-testid="stMetricLabel"] p { font-size: 0.72rem !important; }
-    div[data-testid="stMetricDelta"] { font-size: 0.7rem !important; }
+    /* כל פריסת-עמודות נערמת אנכית לרוחב מלא */
+    [data-testid="stHorizontalBlock"], div[class*="stHorizontalBlock"] {
+        flex-wrap: wrap !important; gap: 0.5rem !important;
+    }
+    [data-testid="stHorizontalBlock"] > div,
+    div[class*="stHorizontalBlock"] > div {
+        flex: 1 1 100% !important; min-width: 100% !important; width: 100% !important;
+    }
 
-    /* באנר מצב-שוק קטן יותר */
+    /* מטריקות ברורות */
+    [data-testid="stMetricValue"], div[class*="stMetricValue"] { font-size: 1.5rem !important; }
+    [data-testid="stMetricLabel"], div[class*="stMetricLabel"] { font-size: 0.85rem !important; }
+
+    /* באנר מצב-שוק */
     .regime-bull, .regime-neutral, .regime-bear {
-        font-size: 1rem !important; padding: 8px 10px !important;
+        font-size: 1.05rem !important; padding: 10px 12px !important;
     }
 
-    /* טבלאות/דאטהפריים — גלילה אופקית במקום חריגה מהמסך */
-    div[data-testid="stDataFrame"], div[data-testid="stTable"] { overflow-x: auto !important; }
+    /* טבלאות — גלילה אופקית במקום חריגה מהמסך */
+    [data-testid="stDataFrame"], [data-testid="stTable"],
+    div[class*="stDataFrame"], div[class*="stTable"] { overflow-x: auto !important; }
 
     /* כותרות קומפקטיות */
     h1 { font-size: 1.4rem !important; }
