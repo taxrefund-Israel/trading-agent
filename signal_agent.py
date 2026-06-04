@@ -794,7 +794,40 @@ def paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx):
 
 
 # ─── Main app ─────────────────────────────────────────────────────────────────
+import hashlib as _hashlib
+
+# SHA-256 של סיסמת הדשבורד (הסיסמה עצמה לעולם לא נשמרת בקוד/בגיט).
+# ניתן לעקוף עם st.secrets["dashboard_password"] (סיסמה רגילה) אם רוצים.
+_DASH_PW_HASH = "3090009d6533b344b3a4aae98c2133d3f394148243d9417f9f83dfd20d450182"
+
+
+def _check_password() -> bool:
+    """מציג שער סיסמה. מחזיר True רק לאחר הזנת הסיסמה הנכונה."""
+    expected_hash = _DASH_PW_HASH
+    try:
+        if "dashboard_password" in st.secrets:
+            expected_hash = _hashlib.sha256(
+                str(st.secrets["dashboard_password"]).encode()).hexdigest()
+    except Exception:
+        pass
+
+    if st.session_state.get("_authed"):
+        return True
+
+    st.markdown("### 🔒 כניסה לדשבורד")
+    pw = st.text_input("סיסמה", type="password", key="_pw_input")
+    if st.button("כניסה"):
+        if _hashlib.sha256((pw or "").encode()).hexdigest() == expected_hash:
+            st.session_state["_authed"] = True
+            st.rerun()
+        else:
+            st.error("סיסמה שגויה")
+    st.stop()
+    return False
+
+
 def main():
+    _check_password()
     # ── Sidebar ──────────────────────────────────────────────────────────────
     st.sidebar.title("⚙️ הגדרות")
     portfolio_nis = st.sidebar.number_input(
