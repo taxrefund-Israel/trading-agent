@@ -28,8 +28,8 @@ def now_il():
 st.set_page_config(
     page_title="ת\"א 125 — איתותי מסחר",
     page_icon="📈",
-    layout="wide",
-    initial_sidebar_state="collapsed",   # מתחיל סגור (נייד+דסקטופ); נפתח בכפתור ההמבורגר
+    layout="centered",   # פריסה ממורכזת — ידידותית לנייד, נערמת נקי במסכים צרים
+    initial_sidebar_state="collapsed",   # מתחיל סגור; נפתח בכפתור ההמבורגר
 )
 
 # ─── Hebrew RTL style ──────────────────────────────────────────────────────────
