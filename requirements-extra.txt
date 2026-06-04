@@ -1,0 +1,8 @@
+# תלויות אופציונליות — לא נדרשות לדשבורד או למנוע היומי.
+# נחוצות רק לסקריפטים של מסחר חי / סוכן AI (scalper, intraday, agent.py).
+# התקנה: pip install -r requirements-extra.txt
+anthropic>=0.52.0
+alpaca-py>=0.26.0
+ib_insync>=0.9.86       # Interactive Brokers TWS API (מסחר חי)
+matplotlib>=3.7.0
+python-dotenv>=1.0.0

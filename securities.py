@@ -87,3 +87,11 @@ def hname(sym: str) -> str:
 
 def sec_number(sym: str) -> str | None:
     return SEC_NUMBERS.get(sym)
+
+
+def dashboard_url() -> str | None:
+    """כתובת הדשבורד לקישור בהודעות. נקראת ממשתנה הסביבה DASHBOARD_URL
+    (מוגדר ב-GitHub Actions). מחזיר None אם לא הוגדרה."""
+    import os
+    url = (os.environ.get("DASHBOARD_URL") or "").strip()
+    return url or None

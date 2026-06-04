@@ -25,7 +25,7 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from securities import hname
+from securities import hname, dashboard_url
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "email_config.json")
 
@@ -51,6 +51,16 @@ def _load_config() -> dict | None:
 
 def _fmt_pct(v: float) -> str:
     return f"{v:+.2f}%"
+
+
+def _dashboard_button() -> str:
+    url = dashboard_url()
+    if not url:
+        return ""
+    return (f'<div style="margin:12px 0;">'
+            f'<a href="{url}" style="display:inline-block;background:#2563eb;color:#fff;'
+            f'text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:bold;">'
+            f'📈 צפייה בדשבורד המלא</a></div>')
 
 
 def _build_html(payload: dict) -> str:
@@ -199,6 +209,7 @@ def _build_html(payload: dict) -> str:
     <b>אג"ח:</b> ₪{bonds:,.0f} &nbsp;|&nbsp;
     <b>מזומן:</b> ₪{cash:,.0f}
   </div>
+  {_dashboard_button()}
   {buy_html}
   <br>
   {sell_html}

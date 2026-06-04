@@ -23,7 +23,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 
-from securities import hname
+from securities import hname, dashboard_url
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "telegram_config.json")
 API = "https://api.telegram.org/bot{token}/sendMessage"
@@ -123,6 +123,10 @@ def _build_text(payload: dict) -> str:
         L.append(f'סה"כ: ₪{projected["total"]:,.0f}')
         L.append("")
 
+    url = dashboard_url()
+    if url:
+        L.append(f'📈 <a href="{url}">צפייה בדשבורד המלא</a>')
+        L.append("")
     L.append("<i>אינה ייעוץ השקעות. הביצוע באחריותך דרך הברוקר שלך.</i>")
     return "\n".join(L)
 
