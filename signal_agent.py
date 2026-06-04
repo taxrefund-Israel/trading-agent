@@ -907,12 +907,16 @@ def main():
         idx, stocks = fetch_data()
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab1, tab2 = st.tabs(["📡 איתותים חיים", "🤖 תיק אוטומטי"])
+    # מעבר בין מסכים — radio במקום tabs: גלוי ולחיץ תמיד, גם בנייד (tabs נחתכו במובייל)
+    view = st.radio(
+        "בחר מסך",
+        ["📡 איתותים חיים", "🤖 תיק אוטומטי"],
+        horizontal=True, label_visibility="collapsed",
+    )
 
-    with tab1:
+    if view == "📡 איתותים חיים":
         _render_signals_tab(idx, stocks, portfolio_nis, show_all)
-
-    with tab2:
+    else:
         snaps, pos_df, trades_df, grlog_df, orders_df = load_paper_data()
         paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx)
 
