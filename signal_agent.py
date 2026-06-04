@@ -905,11 +905,12 @@ def main():
         idx, stocks = fetch_data()
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    # מעבר בין מסכים — radio קצר (שני לחצנים) שנכנס גם לרוחב נייד בלייט (portrait)
+    # מעבר בין מסכים — radio אנכי (אחד מתחת לשני): מובטח שיופיע במלואו בכל רוחב מסך,
+    # כולל portrait בנייד. (horizontal=True נחתך מחוץ למסך הצר.)
     view = st.radio(
         "בחר מסך",
         ["📡 איתותים", "🤖 תיק"],
-        horizontal=True, label_visibility="collapsed",
+        horizontal=False, label_visibility="collapsed",
     )
 
     if view == "📡 איתותים":
