@@ -22,7 +22,7 @@ st.set_page_config(
     page_title="ת\"א 125 — איתותי מסחר",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",   # נסגר אוטומטית בנייד, פתוח בדסקטופ
 )
 
 # ─── Hebrew RTL style ──────────────────────────────────────────────────────────
@@ -40,6 +40,36 @@ st.markdown("""
   .signal-sell  { background:#fce8e8; border-left:4px solid #c0392b; padding:8px; border-radius:4px; }
   .signal-hold  { background:#fff8e6; border-left:4px solid #e67e22; padding:8px; border-radius:4px; }
   .metric-box   { background:#f8f9fa; border-radius:8px; padding:10px; text-align:center; }
+
+  /* ===== התאמה לנייד (Mobile responsiveness) ===== */
+  @media (max-width: 640px) {
+    /* פחות שוליים — ניצול מלא של רוחב המסך */
+    .block-container { padding: 0.8rem 0.6rem !important; }
+
+    /* עמודות נערמות יפה במקום להידחס: שתי מטריקות בשורה, תוכן רחב — מלא */
+    div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 0.4rem !important; }
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+        flex: 1 1 42% !important; min-width: 42% !important;
+    }
+
+    /* מטריקות בגופן קטן יותר כדי שייכנסו */
+    div[data-testid="stMetricValue"] { font-size: 1.15rem !important; }
+    div[data-testid="stMetricLabel"] p { font-size: 0.72rem !important; }
+    div[data-testid="stMetricDelta"] { font-size: 0.7rem !important; }
+
+    /* באנר מצב-שוק קטן יותר */
+    .regime-bull, .regime-neutral, .regime-bear {
+        font-size: 1rem !important; padding: 8px 10px !important;
+    }
+
+    /* טבלאות/דאטהפריים — גלילה אופקית במקום חריגה מהמסך */
+    div[data-testid="stDataFrame"], div[data-testid="stTable"] { overflow-x: auto !important; }
+
+    /* כותרות קומפקטיות */
+    h1 { font-size: 1.4rem !important; }
+    h2 { font-size: 1.2rem !important; }
+    h3 { font-size: 1.05rem !important; }
+  }
 </style>
 """, unsafe_allow_html=True)
 
