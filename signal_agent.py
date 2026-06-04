@@ -86,18 +86,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── באנר אבחון זמני: מאשר (א) שהקוד החדש הגיע למכשיר, (ב) אם זיהוי הנייד עובד ──
-try:
-    _ua_diag = (st.context.headers.get("User-Agent", "") or "")
-except Exception as _e:
-    _ua_diag = f"ERR:{_e}"
-_is_mob_diag = any(k in _ua_diag for k in ("Mobile", "Android", "iPhone", "iPad", "iPod"))
-st.markdown(
-    f"<div style='background:#dc2626;color:#fff;text-align:center;padding:8px;"
-    f"border-radius:6px;font-weight:bold;margin-bottom:8px;font-size:0.8rem;'>"
-    f"🔧 DIAG-2 · mobile={_is_mob_diag} · UA: {(_ua_diag[:55] or 'NONE')}</div>",
-    unsafe_allow_html=True,
-)
 
 # ─── Universe ──────────────────────────────────────────────────────────────────
 TA125_UNIVERSE = [
