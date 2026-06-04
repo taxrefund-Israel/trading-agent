@@ -86,6 +86,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ── סמן בנייה זמני לאבחון מטמון: אם רואים את הבאנר הזה — הקוד החדש הגיע למכשיר ──
+st.markdown(
+    "<div style='background:#dc2626;color:#fff;text-align:center;padding:8px;"
+    "border-radius:6px;font-weight:bold;margin-bottom:8px;'>"
+    "🔧 BUILD&nbsp;MOBILE-CHECK-1</div>",
+    unsafe_allow_html=True,
+)
+
 # ─── Universe ──────────────────────────────────────────────────────────────────
 TA125_UNIVERSE = [
     "POLI.TA","LUMI.TA","DSCT.TA","FIBI.TA",
