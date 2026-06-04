@@ -14,6 +14,13 @@ import json
 import os
 import sqlite3
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+# שעון ישראל — חשוב כי Streamlit Cloud רץ ב-UTC; בלי זה חותמת הזמן מוצגת 3 שעות אחורה.
+IL_TZ = ZoneInfo("Asia/Jerusalem")
+
+def now_il():
+    return datetime.now(IL_TZ)
 # הספריות הכבדות (plotly / yfinance / ta) נטענות רק אחרי שער הסיסמה — ראה main().
 # כך מסך הכניסה עולה מיידית וצורך מעט זיכרון (חשוב ב-Streamlit Cloud).
 
@@ -623,7 +630,7 @@ def paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx):
                 f"{bond_val/port_val*100:.0f}% מהתיק")
     r2c3.metric("מזומן", f"₪{cash_val:,.0f}",
                 f"{cash_val/port_val*100:.0f}% מהתיק")
-    days_stale = (datetime.now().date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
+    days_stale = (now_il().date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
     stale_label = f"⚠ {days_stale} ימים ישן" if days_stale > 1 else f"Regime: {regime}"
     r2c4.metric("הרצה אחרונה", last_date, stale_label,
                 delta_color="inverse" if days_stale > 1 else "normal")
@@ -915,7 +922,7 @@ def _render_signals_tab(idx, stocks, portfolio_nis, show_all):
                        delta="מעל ✓" if regime_info.get("above_sma200") else "מתחת ✗")
     with c3: st.metric("שיפוע SMA50 (30י')", f"{regime_info.get('sma50_slope', 0):+.3f}%")
     with c4: st.metric("ADX", f"{regime_info.get('adx', 0):.1f}")
-    with c5: st.metric("עדכון אחרון", datetime.now().strftime("%H:%M:%S"))
+    with c5: st.metric("עדכון אחרון", now_il().strftime("%H:%M:%S"))
 
     st.markdown("---")
 
