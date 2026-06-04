@@ -29,7 +29,7 @@ st.set_page_config(
     page_title="ת\"א 125 — איתותי מסחר",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="auto",   # נסגר אוטומטית בנייד, פתוח בדסקטופ
+    initial_sidebar_state="collapsed",   # מתחיל סגור (נייד+דסקטופ); נפתח בכפתור ההמבורגר
 )
 
 # ─── Hebrew RTL style ──────────────────────────────────────────────────────────
@@ -48,40 +48,18 @@ st.markdown("""
   .signal-hold  { background:#fff8e6; border-left:4px solid #e67e22; padding:8px; border-radius:4px; }
   .metric-box   { background:#f8f9fa; border-radius:8px; padding:10px; text-align:center; }
 
-  /* ===== התאמה לנייד (Mobile responsiveness) =====
-     לא תלוי בשמות data-testid (Streamlit שינה אותם בין גרסאות) — מכוון לילדים
-     הישירים של בלוק העמודות, כך שהעמודות נערמות לרוחב מלא ונקראות בבירור. */
+  /* ===== התאמה לנייד — מינימלי ובטוח =====
+     לא נוגעים בפריסת העמודות! Streamlit עורם אותן לבד בנייד. כאן רק התאמות
+     בטוחות שלא יכולות לשבור מבנה: שוליים, גודל גופן, וגלילה לטבלאות. */
   @media (max-width: 640px) {
-    .block-container, .main .block-container {
-        padding: 0.7rem 0.5rem !important; max-width: 100% !important;
-    }
-
-    /* כל פריסת-עמודות נערמת אנכית לרוחב מלא */
-    [data-testid="stHorizontalBlock"], div[class*="stHorizontalBlock"] {
-        flex-wrap: wrap !important; gap: 0.5rem !important;
-    }
-    [data-testid="stHorizontalBlock"] > div,
-    div[class*="stHorizontalBlock"] > div {
-        flex: 1 1 100% !important; min-width: 100% !important; width: 100% !important;
-    }
-
-    /* מטריקות ברורות */
-    [data-testid="stMetricValue"], div[class*="stMetricValue"] { font-size: 1.5rem !important; }
-    [data-testid="stMetricLabel"], div[class*="stMetricLabel"] { font-size: 0.85rem !important; }
-
-    /* באנר מצב-שוק */
+    .block-container { padding: 0.8rem 0.6rem !important; }
     .regime-bull, .regime-neutral, .regime-bear {
-        font-size: 1.05rem !important; padding: 10px 12px !important;
+        font-size: 1rem !important; padding: 8px 10px !important;
     }
-
-    /* טבלאות — גלילה אופקית במקום חריגה מהמסך */
-    [data-testid="stDataFrame"], [data-testid="stTable"],
-    div[class*="stDataFrame"], div[class*="stTable"] { overflow-x: auto !important; }
-
-    /* כותרות קומפקטיות */
+    [data-testid="stDataFrame"] { overflow-x: auto !important; }
     h1 { font-size: 1.4rem !important; }
     h2 { font-size: 1.2rem !important; }
-    h3 { font-size: 1.05rem !important; }
+    h3 { font-size: 1.1rem !important; }
   }
 </style>
 """, unsafe_allow_html=True)
