@@ -21,6 +21,28 @@ IL_TZ = ZoneInfo("Asia/Jerusalem")
 
 def now_il():
     return datetime.now(IL_TZ)
+
+
+def is_mobile() -> bool:
+    """זיהוי מכשיר נייד לפי User-Agent — לפריסה מותאמת-נייד אמיתית (לא טלאי CSS)."""
+    try:
+        ua = st.context.headers.get("User-Agent", "") or ""
+    except Exception:
+        ua = ""
+    return any(k in ua for k in ("Mobile", "Android", "iPhone", "iPad", "iPod"))
+
+
+def metric_grid(items, per_row_desktop, per_row_mobile=2):
+    """מציג מטריקות ברשת שמסתגלת למכשיר: בנייד פחות עמודות בשורה (ברירת מחדל 2),
+    בדסקטופ הפריסה הרחבה. items = רשימת dict עם label, value, ואופציונלי delta/delta_color."""
+    per_row = per_row_mobile if is_mobile() else per_row_desktop
+    for i in range(0, len(items), per_row):
+        chunk = items[i:i + per_row]
+        cols = st.columns(len(chunk))
+        for col, it in zip(cols, chunk):
+            with col:
+                st.metric(it["label"], it["value"], it.get("delta"),
+                          delta_color=it.get("delta_color", "normal"))
 # הספריות הכבדות (plotly / yfinance / ta) נטענות רק אחרי שער הסיסמה — ראה main().
 # כך מסך הכניסה עולה מיידית וצורך מעט זיכרון (חשוב ב-Streamlit Cloud).
 
@@ -599,25 +621,21 @@ def paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx):
         idx_pct = 0.0
     alpha = cum_pct - idx_pct
 
-    # ── Summary metrics (2 rows of 4) ─────────────────────────────────────────
-    r1c1, r1c2, r1c3, r1c4 = st.columns(4)
-    r1c1.metric("שווי תיק", f"₪{port_val:,.0f}", f"{cum_pct:+.2f}%")
-    r1c2.metric("תשואה מצטברת", f"{cum_pct:+.2f}%")
-    r1c3.metric("ת\"א 125 (אותה תקופה)", f"{idx_pct:+.2f}%")
-    r1c4.metric("אלפא vs מדד", f"{alpha:+.2f}%",
-                delta_color="normal" if alpha >= 0 else "inverse")
-
-    r2c1, r2c2, r2c3, r2c4 = st.columns(4)
-    r2c1.metric("מניות", f"₪{equity_val:,.0f}",
-                f"{equity_val/port_val*100:.0f}% מהתיק")
-    r2c2.metric("אגח", f"₪{bond_val:,.0f}",
-                f"{bond_val/port_val*100:.0f}% מהתיק")
-    r2c3.metric("מזומן", f"₪{cash_val:,.0f}",
-                f"{cash_val/port_val*100:.0f}% מהתיק")
+    # ── Summary metrics — רשת מסתגלת למכשיר (4 בדסקטופ, 2 בשורה בנייד) ─────────
     days_stale = (now_il().date() - datetime.strptime(last_date, "%Y-%m-%d").date()).days
     stale_label = f"⚠ {days_stale} ימים ישן" if days_stale > 1 else f"Regime: {regime}"
-    r2c4.metric("הרצה אחרונה", last_date, stale_label,
-                delta_color="inverse" if days_stale > 1 else "normal")
+    metric_grid([
+        {"label": "שווי תיק", "value": f"₪{port_val:,.0f}", "delta": f"{cum_pct:+.2f}%"},
+        {"label": "תשואה מצטברת", "value": f"{cum_pct:+.2f}%"},
+        {"label": "ת\"א 125 (אותה תקופה)", "value": f"{idx_pct:+.2f}%"},
+        {"label": "אלפא vs מדד", "value": f"{alpha:+.2f}%",
+         "delta_color": "normal" if alpha >= 0 else "inverse"},
+        {"label": "מניות", "value": f"₪{equity_val:,.0f}", "delta": f"{equity_val/port_val*100:.0f}% מהתיק"},
+        {"label": "אגח", "value": f"₪{bond_val:,.0f}", "delta": f"{bond_val/port_val*100:.0f}% מהתיק"},
+        {"label": "מזומן", "value": f"₪{cash_val:,.0f}", "delta": f"{cash_val/port_val*100:.0f}% מהתיק"},
+        {"label": "הרצה אחרונה", "value": last_date, "delta": stale_label,
+         "delta_color": "inverse" if days_stale > 1 else "normal"},
+    ], per_row_desktop=4, per_row_mobile=2)
 
     st.markdown("")
 
@@ -899,14 +917,15 @@ def _render_signals_tab(idx, stocks, portfolio_nis, show_all):
     st.markdown(f'<div class="{REGIME_CSS[regime]}">{REGIME_HE[regime]}</div>', unsafe_allow_html=True)
     st.markdown(f"<small style='color:#aaa;'>**אסטרטגיה:** {REGIME_DESC[regime]}</small>", unsafe_allow_html=True)
 
-    # Regime metrics
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1: st.metric("מדד ת\"א 125", f"₪{regime_info.get('price', 0):,.0f}")
-    with c2: st.metric("SMA200", f"₪{regime_info.get('sma200', 0):,.0f}",
-                       delta="מעל ✓" if regime_info.get("above_sma200") else "מתחת ✗")
-    with c3: st.metric("שיפוע SMA50 (30י')", f"{regime_info.get('sma50_slope', 0):+.3f}%")
-    with c4: st.metric("ADX", f"{regime_info.get('adx', 0):.1f}")
-    with c5: st.metric("עדכון אחרון", now_il().strftime("%H:%M:%S"))
+    # Regime metrics — רשת שמסתגלת למכשיר (5 בדסקטופ, 2 בשורה בנייד)
+    metric_grid([
+        {"label": "מדד ת\"א 125", "value": f"₪{regime_info.get('price', 0):,.0f}"},
+        {"label": "SMA200", "value": f"₪{regime_info.get('sma200', 0):,.0f}",
+         "delta": "מעל ✓" if regime_info.get("above_sma200") else "מתחת ✗"},
+        {"label": "שיפוע SMA50 (30י')", "value": f"{regime_info.get('sma50_slope', 0):+.3f}%"},
+        {"label": "ADX", "value": f"{regime_info.get('adx', 0):.1f}"},
+        {"label": "עדכון אחרון", "value": now_il().strftime("%H:%M:%S")},
+    ], per_row_desktop=5, per_row_mobile=2)
 
     st.markdown("---")
 
