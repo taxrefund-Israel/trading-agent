@@ -88,6 +88,14 @@ st.markdown("""
     [data-testid="stSidebarCollapsedControl"],
     [data-testid="collapsedControl"],
     [data-testid="stSidebarCollapseButton"] { display: none !important; }
+
+    /* לשוניות המעבר בין מסכים — שיהיו תמיד גלויות ולחיצות בנייד (לא ייחתכו) */
+    [data-testid="stTabs"] [role="tablist"] {
+        flex-wrap: wrap !important; overflow-x: auto !important; gap: 4px !important;
+    }
+    [data-testid="stTabs"] button[role="tab"] {
+        font-size: 0.95rem !important; padding: 6px 10px !important;
+    }
   }
 </style>
 """, unsafe_allow_html=True)
@@ -899,7 +907,7 @@ def main():
         idx, stocks = fetch_data()
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab1, tab2 = st.tabs(["📡 איתותים חיים", "🤖 Paper Trading אוטומטי"])
+    tab1, tab2 = st.tabs(["📡 איתותים חיים", "🤖 תיק אוטומטי"])
 
     with tab1:
         _render_signals_tab(idx, stocks, portfolio_nis, show_all)
