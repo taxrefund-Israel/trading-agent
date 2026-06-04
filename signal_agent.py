@@ -89,12 +89,10 @@ st.markdown("""
     [data-testid="collapsedControl"],
     [data-testid="stSidebarCollapseButton"] { display: none !important; }
 
-    /* לשוניות המעבר בין מסכים — שיהיו תמיד גלויות ולחיצות בנייד (לא ייחתכו) */
-    [data-testid="stTabs"] [role="tablist"] {
-        flex-wrap: wrap !important; overflow-x: auto !important; gap: 4px !important;
-    }
-    [data-testid="stTabs"] button[role="tab"] {
-        font-size: 0.95rem !important; padding: 6px 10px !important;
+    /* מתג המעבר בין מסכים (radio) — שיתגלגל לשורה הבאה אם צר מדי, כך ששני
+       הלחצנים תמיד גלויים גם ב-portrait (לא ייחתכו מחוץ למסך) */
+    [data-testid="stRadio"] [role="radiogroup"] {
+        flex-wrap: wrap !important; gap: 6px 14px !important;
     }
   }
 </style>
@@ -907,14 +905,14 @@ def main():
         idx, stocks = fetch_data()
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    # מעבר בין מסכים — radio במקום tabs: גלוי ולחיץ תמיד, גם בנייד (tabs נחתכו במובייל)
+    # מעבר בין מסכים — radio קצר (שני לחצנים) שנכנס גם לרוחב נייד בלייט (portrait)
     view = st.radio(
         "בחר מסך",
-        ["📡 איתותים חיים", "🤖 תיק אוטומטי"],
+        ["📡 איתותים", "🤖 תיק"],
         horizontal=True, label_visibility="collapsed",
     )
 
-    if view == "📡 איתותים חיים":
+    if view == "📡 איתותים":
         _render_signals_tab(idx, stocks, portfolio_nis, show_all)
     else:
         snaps, pos_df, trades_df, grlog_df, orders_df = load_paper_data()
