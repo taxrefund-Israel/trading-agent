@@ -9,15 +9,13 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import streamlit as st
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import yfinance as yf
 import pandas as pd
-import ta
 import json
 import os
 import sqlite3
 from datetime import datetime, timedelta
+# הספריות הכבדות (plotly / yfinance / ta) נטענות רק אחרי שער הסיסמה — ראה main().
+# כך מסך הכניסה עולה מיידית וצורך מעט זיכרון (חשוב ב-Streamlit Cloud).
 
 # ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -828,6 +826,12 @@ def _check_password() -> bool:
 
 def main():
     _check_password()
+    # טעינת הספריות הכבדות רק אחרי אימות (מאיץ את מסך הסיסמה ומפחית זיכרון עד כניסה)
+    global go, make_subplots, yf, ta
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    import yfinance as yf
+    import ta
     # ── Sidebar ──────────────────────────────────────────────────────────────
     st.sidebar.title("⚙️ הגדרות")
     portfolio_nis = st.sidebar.number_input(
