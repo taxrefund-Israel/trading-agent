@@ -70,6 +70,11 @@ MIN_QTY = {
 def min_qty_for(sym):
     return MIN_QTY.get(sym, DEFAULT_MIN_QTY)
 
+# בקרת סיכון: האם הסטופ-לוס כפוף לתקופת ההחזקה המינימלית?
+# False (ברירת מחדל, נכון) = הסטופ תמיד פעיל. True = ההתנהגות הישנה (הבאגית).
+# משמש בעיקר להשוואת backtest בין שתי ההתנהגויות.
+STOP_LOSS_RESPECTS_MIN_HOLD = False
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def _last(s):
     v = s.dropna()
@@ -572,7 +577,7 @@ def run(for_date=None, notify=False):
         n_bear   = bear_exit_signals(df)
 
         exit_reason = None
-        if price <= trail_stop:
+        if price <= trail_stop and (not STOP_LOSS_RESPECTS_MIN_HOLD or pos["days_held"] >= p["min_hold"]):
             # סטופ-לוס/טריילינג — תמיד פעיל (בקרת סיכון!), ללא תלות בתקופת ההחזקה.
             # (לפני התיקון: היה חסום ע"י min_hold, כך שהסטופ לא נאכף ב-40 הימים הראשונים.)
             exit_reason = "trail_stop"
