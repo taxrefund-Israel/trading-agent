@@ -572,11 +572,14 @@ def run(for_date=None, notify=False):
         n_bear   = bear_exit_signals(df)
 
         exit_reason = None
-        if price <= trail_stop and pos["days_held"] >= p["min_hold"]:
+        if price <= trail_stop:
+            # סטופ-לוס/טריילינג — תמיד פעיל (בקרת סיכון!), ללא תלות בתקופת ההחזקה.
+            # (לפני התיקון: היה חסום ע"י min_hold, כך שהסטופ לא נאכף ב-40 הימים הראשונים.)
             exit_reason = "trail_stop"
         elif tp_price and price >= tp_price:
             exit_reason = "take_profit"
         elif n_bear >= 4 and pos["days_held"] >= p["min_hold"]:
+            # יציאת איתות (לא סטופ) — כאן min_hold כן רלוונטי, למניעת מכירה על רעש
             exit_reason = "signal_exit"
         elif regime == "BEAR" and pos["days_held"] >= 1:
             exit_reason = "regime_bear"
