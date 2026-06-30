@@ -108,16 +108,19 @@ def _build_text(payload: dict) -> str:
         L.append("🔴 <b>מכירות</b>: אין יציאות היום.")
     L.append("")
 
-    # ── אג"ח (איזון מחדש) ──
+    # ── אג"ח (איזון מחדש) — פירוט סכום לכל מכשיר ──
     if bond_action:
-        bonds_names = " · ".join(f'{n} (נ"ע {sn})' for n, sn in bond_instruments) or "אג\"ח ממשלתי"
-        if bond_action["side"] == "BUY":
-            L.append(f'🟢 <b>קניית אג"ח: ₪{bond_action["amount"]:,.0f}</b> '
-                     f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)')
+        n_b = len(bond_instruments) or 1
+        per_b = bond_action["amount"] / n_b
+        is_buy = bond_action["side"] == "BUY"
+        emoji, verb = ("🟢", "קניית") if is_buy else ("🔴", "מכירת")
+        L.append(f'{emoji} <b>{verb} אג"ח: ₪{bond_action["amount"]:,.0f}</b> '
+                 f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)')
+        if bond_instruments:
+            for name, sn in bond_instruments:
+                L.append(f'  • {name} · נ"ע {sn}: <b>₪{per_b:,.0f}</b>')
         else:
-            L.append(f'🔴 <b>מכירת אג"ח: ₪{bond_action["amount"]:,.0f}</b> '
-                     f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)')
-        L.append(f"  <i>{bonds_names}</i>")
+            L.append('  • אג"ח ממשלתי')
         L.append("")
 
     # ── תיק מומלץ אחרי ביצוע ──

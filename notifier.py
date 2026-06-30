@@ -148,17 +148,24 @@ def _build_html(payload: dict) -> str:
     else:
         sell_html = '<h3 style="color:#b91c1c;">🔴 המלצות מכירה</h3><p>אין יציאות היום.</p>'
 
-    # ── Bond rebalance (buy/sell of bonds) ──
+    # ── Bond rebalance (buy/sell) — סכום מפורט לכל מכשיר ──
     if bond_action:
-        bonds_names = " · ".join(f'{n} · נ"ע {sn}' for n, sn in bond_instruments) or "אג\"ח ממשלתי"
         is_buy = bond_action["side"] == "BUY"
         color = "#15803d" if is_buy else "#b91c1c"
         title = "🟢 קניית אג\"ח" if is_buy else "🔴 מכירת אג\"ח"
+        n_b = len(bond_instruments) or 1
+        per_b = bond_action["amount"] / n_b
+        if bond_instruments:
+            brows = "".join(row([f'{n} · נ"ע {sn}', f"₪{per_b:,.0f}"]) for n, sn in bond_instruments)
+        else:
+            brows = row(['אג"ח ממשלתי', f"₪{bond_action['amount']:,.0f}"])
+        total_cell = f"<b>₪{bond_action['amount']:,.0f}</b>"
         bond_html = (
-            f'<h3 style="color:{color};">{title}</h3>'
-            f'<p style="font-size:14px;">סכום: <b>₪{bond_action["amount"]:,.0f}</b> · '
-            f'יעד הקצאה: {bond_action["target_pct"]:.0f}% מהתיק<br>'
-            f'<span style="color:#374151;">מכשירים: {bonds_names}</span></p>')
+            f'<h3 style="color:{color};">{title} '
+            f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)</h3>'
+            f'<table style="border-collapse:collapse;width:100%;font-size:14px;">'
+            f'{row(["מכשיר אג\"ח", "סכום"], header=True)}{brows}'
+            f'{row(["<b>סה\"כ</b>", total_cell])}</table>')
     else:
         bond_html = ""
 
