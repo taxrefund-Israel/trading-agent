@@ -24,7 +24,7 @@ INITIAL_CASH     = 100_000.0
 COMMISSION       = 0.0008
 TAX_RATE         = 0.25
 RS_LOOKBACK      = 63
-BOND_YIELD       = 0.038 / 252      # daily ~3.8% annual
+BOND_YIELD       = 0.045 / 252      # קרן כספית — עוקבת אחרי ריבית קצרה (~4.5% שנתי)
 RISK_PER_TRADE   = 0.015
 MAX_POS_PCT      = 0.20
 
@@ -486,7 +486,7 @@ def run(for_date=None, notify=False):
 
     # Load state
     positions, cash, bond_value = load_state()
-    L(f"  מצב קיים: {len(positions)} פוזיציות פתוחות, מזומן ₪{cash:,.0f}, אגח ₪{bond_value:,.0f}")
+    L(f"  מצב קיים: {len(positions)} פוזיציות פתוחות, מזומן ₪{cash:,.0f}, קרן כספית ₪{bond_value:,.0f}")
 
     # Fetch market data
     L("\n  טוען נתונים מ-yfinance...")
@@ -552,12 +552,12 @@ def run(for_date=None, notify=False):
         move = min(target_bond - bond_value, cash * 0.4)
         bond_value += move; cash -= move
         bond_action = {"side": "BUY", "amount": move, "target_pct": BOND_ALLOC[regime] * 100}
-        L(f"  אגח: הוספה ₪{move:,.0f} (יעד {BOND_ALLOC[regime]*100:.0f}%)")
+        L(f"  קרן כספית: הוספה ₪{move:,.0f} (יעד {BOND_ALLOC[regime]*100:.0f}%)")
     elif bond_value > target_bond * 1.05:
         move = bond_value - target_bond
         cash += move; bond_value -= move
         bond_action = {"side": "SELL", "amount": move, "target_pct": BOND_ALLOC[regime] * 100}
-        L(f"  אגח: משיכה ₪{move:,.0f}")
+        L(f"  קרן כספית: משיכה ₪{move:,.0f}")
 
     # ── Check exits ──────────────────────────────────────────────────────────
     L("\n  בודק יציאות...")
@@ -713,7 +713,7 @@ def run(for_date=None, notify=False):
     L(f"  שווי תיק:      ₪{portfolio_val:,.0f}")
     L(f"  תשואה מצטברת: {cum_pct:+.2f}%")
     L(f"  מזומן:         ₪{cash:,.0f}")
-    L(f"  אגח:           ₪{bond_value:,.0f}")
+    L(f"  קרן כספית:     ₪{bond_value:,.0f}")
     L(f"  מניות (equity):₪{equity:,.0f}")
     L(f"  פוזיציות:      {len(positions)}")
     L(f"  Regime:        {regime}")

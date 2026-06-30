@@ -152,19 +152,19 @@ def _build_html(payload: dict) -> str:
     if bond_action:
         is_buy = bond_action["side"] == "BUY"
         color = "#15803d" if is_buy else "#b91c1c"
-        title = "🟢 קניית אג\"ח" if is_buy else "🔴 מכירת אג\"ח"
+        title = "🟢 קניית קרן כספית" if is_buy else "🔴 מכירת קרן כספית"
         n_b = len(bond_instruments) or 1
         per_b = bond_action["amount"] / n_b
         if bond_instruments:
             brows = "".join(row([f'{n} · נ"ע {sn}', f"₪{per_b:,.0f}"]) for n, sn in bond_instruments)
         else:
-            brows = row(['אג"ח ממשלתי', f"₪{bond_action['amount']:,.0f}"])
+            brows = row(['קרן כספית', f"₪{bond_action['amount']:,.0f}"])
         total_cell = f"<b>₪{bond_action['amount']:,.0f}</b>"
         bond_html = (
             f'<h3 style="color:{color};">{title} '
             f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)</h3>'
             f'<table style="border-collapse:collapse;width:100%;font-size:14px;">'
-            f'{row(["מכשיר אג\"ח", "סכום"], header=True)}{brows}'
+            f'{row(["מכשיר", "סכום"], header=True)}{brows}'
             f'{row(["<b>סה\"כ</b>", total_cell])}</table>')
     else:
         bond_html = ""
@@ -197,7 +197,7 @@ def _build_html(payload: dict) -> str:
                 comp_rows += row([f'{name} · נ"ע {secn}', "—",
                                   f"₪{split:,.0f}", f"{split/tot*100:.1f}%"])
         elif projected["bonds"] > 0:
-            comp_rows += row(['אג"ח ממשלתי', "—", f"₪{projected['bonds']:,.0f}",
+            comp_rows += row(['קרן כספית', "—", f"₪{projected['bonds']:,.0f}",
                               f"{projected['bonds']/tot*100:.1f}%"])
         comp_rows += row(["מזומן", "—", f"₪{projected['cash']:,.0f}",
                           f"{projected['cash']/tot*100:.1f}%"])
@@ -209,7 +209,7 @@ def _build_html(payload: dict) -> str:
           {row([f'<b>סה"כ</b>', '', f'<b>₪{projected["total"]:,.0f}</b>', '<b>100%</b>'])}
         </table>
         <p style="font-size:12px;color:#6b7280;">
-          מניות ₪{projected['equity']:,.0f} · אג"ח ₪{projected['bonds']:,.0f} · מזומן ₪{projected['cash']:,.0f}.
+          מניות ₪{projected['equity']:,.0f} · קרן כספית ₪{projected['bonds']:,.0f} · מזומן ₪{projected['cash']:,.0f}.
           מבוסס על הנחת מילוי מלא של פקודות הקנייה במחיר הבסיס.
         </p>"""
     else:
@@ -228,7 +228,7 @@ def _build_html(payload: dict) -> str:
     <b>שווי תיק:</b> ₪{port_val:,.0f} &nbsp;|&nbsp;
     <b>תשואה מצטברת:</b> {_fmt_pct(cum_pct)}<br>
     <b>מניות:</b> ₪{equity:,.0f} &nbsp;|&nbsp;
-    <b>אג"ח:</b> ₪{bonds:,.0f} &nbsp;|&nbsp;
+    <b>קרן כספית:</b> ₪{bonds:,.0f} &nbsp;|&nbsp;
     <b>מזומן:</b> ₪{cash:,.0f}
   </div>
   {_dashboard_button()}

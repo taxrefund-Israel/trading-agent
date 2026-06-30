@@ -644,7 +644,7 @@ def paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx):
         {"label": "אלפא vs מדד", "value": f"{alpha:+.2f}%",
          "delta_color": "normal" if alpha >= 0 else "inverse"},
         {"label": "מניות", "value": f"₪{equity_val:,.0f}", "delta": f"{equity_val/port_val*100:.0f}% מהתיק"},
-        {"label": "אגח", "value": f"₪{bond_val:,.0f}", "delta": f"{bond_val/port_val*100:.0f}% מהתיק"},
+        {"label": "קרן כספית", "value": f"₪{bond_val:,.0f}", "delta": f"{bond_val/port_val*100:.0f}% מהתיק"},
         {"label": "מזומן", "value": f"₪{cash_val:,.0f}", "delta": f"{cash_val/port_val*100:.0f}% מהתיק"},
         {"label": "הרצה אחרונה", "value": last_date, "delta": stale_label,
          "delta_color": "inverse" if days_stale > 1 else "normal"},
@@ -701,27 +701,27 @@ def paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx):
                 "ימים":       str(int(p["days_held"])),
             })
 
-    # אגח
+    # קרן כספית
     if bond_val > 0:
         bond_instruments = BOND_INSTRUMENTS.get(regime, BOND_INSTRUMENTS["NEUTRAL"])
         if bond_instruments:
             split = bond_val / len(bond_instruments)
             for name, secn in bond_instruments:
                 holdings.append({
-                    "סוג":        "אגח",
+                    "סוג":        "קרן כספית",
                     "נייר":       f"{name} · נ\"ע {secn}",
-                    "מחיר כניסה": "ממוצע שוק",
-                    "מחיר נוכחי": "~3.8% שנתי",
+                    "מחיר כניסה": "NAV שוק",
+                    "מחיר נוכחי": "~4.5% שנתי",
                     "כמות":       "—",
                     "שווי":        f"₪{split:,.0f}",
                     "% מהתיק":    f"{split/port_val*100:.1f}%",
-                    "רווח/הפסד":  "+3.8% שנתי",
+                    "רווח/הפסד":  "+4.5% שנתי",
                     "Trail Stop": "—",
                     "ימים":       "—",
                 })
         else:
             holdings.append({
-                "סוג": "אגח", "נייר": "אגח ממשלתי (BULL — 0%)",
+                "סוג": "קרן כספית", "נייר": "קרן כספית (BULL — 0%)",
                 "מחיר כניסה": "—", "מחיר נוכחי": "—", "כמות": "—",
                 "שווי": "₪0", "% מהתיק": "0%",
                 "רווח/הפסד": "—", "Trail Stop": "—", "ימים": "—",
@@ -745,9 +745,9 @@ def paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx):
     styler_h = df_hold.style
     sf_h = getattr(styler_h, "map", getattr(styler_h, "applymap", None))
     def color_type(v):
-        if v == "מניה":  return "color:#2d8c4e;font-weight:bold"
-        if v == "אגח":   return "color:#3498db;font-weight:bold"
-        if v == "מזומן": return "color:#e67e22"
+        if v == "מניה":      return "color:#2d8c4e;font-weight:bold"
+        if v == "קרן כספית": return "color:#3498db;font-weight:bold"
+        if v == "מזומן":     return "color:#e67e22"
         return ""
     def color_pnl2(v):
         if isinstance(v, str) and "%" in v and "שנתי" not in v:
@@ -794,7 +794,7 @@ def paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx):
     # ── Pie breakdown ─────────────────────────────────────────────────────────
     with col_l:
         st.markdown("**הרכב התיק**")
-        pie_labels = ["מניות", "אגח", "מזומן"]
+        pie_labels = ["מניות", "קרן כספית", "מזומן"]
         pie_values = [equity_val, bond_val, cash_val]
         pie_colors = ["#2d8c4e", "#3498db", "#e67e22"]
         pie = go.Figure(go.Pie(

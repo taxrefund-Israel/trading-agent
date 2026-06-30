@@ -114,13 +114,13 @@ def _build_text(payload: dict) -> str:
         per_b = bond_action["amount"] / n_b
         is_buy = bond_action["side"] == "BUY"
         emoji, verb = ("🟢", "קניית") if is_buy else ("🔴", "מכירת")
-        L.append(f'{emoji} <b>{verb} אג"ח: ₪{bond_action["amount"]:,.0f}</b> '
+        L.append(f'{emoji} <b>{verb} קרן כספית: ₪{bond_action["amount"]:,.0f}</b> '
                  f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)')
         if bond_instruments:
             for name, sn in bond_instruments:
                 L.append(f'  • {name} · נ"ע {sn}: <b>₪{per_b:,.0f}</b>')
         else:
-            L.append('  • אג"ח ממשלתי')
+            L.append('  • קרן כספית')
         L.append("")
 
     # ── תיק מומלץ אחרי ביצוע ──
@@ -134,7 +134,7 @@ def _build_text(payload: dict) -> str:
             for (name, secn) in bond_instruments:
                 L.append(f'• {name} · נ"ע {secn}: ₪{split:,.0f} ({split/tot*100:.1f}%)')
         elif projected["bonds"] > 0:
-            L.append(f'• אג"ח ממשלתי: ₪{projected["bonds"]:,.0f} ({projected["bonds"]/tot*100:.1f}%)')
+            L.append(f'• קרן כספית: ₪{projected["bonds"]:,.0f} ({projected["bonds"]/tot*100:.1f}%)')
         L.append(f"• מזומן: ₪{projected['cash']:,.0f} ({projected['cash']/tot*100:.1f}%)")
         L.append(f'סה"כ: ₪{projected["total"]:,.0f}')
         L.append("")
