@@ -76,6 +76,7 @@ def _build_html(payload: dict) -> str:
     holdings = payload["holdings"]  # [(sym, qty, entry, cur, pnl_pct), ...]
     projected = payload.get("projected")          # תיק יעד אחרי ביצוע
     bond_instruments = payload.get("bond_instruments", [])
+    bond_action = payload.get("bond_action")
 
     regime_he = {"BULL": "שורי 🐂", "NEUTRAL": "ניטרלי", "BEAR": "דובי 🐻"}.get(regime, regime)
 
@@ -147,6 +148,20 @@ def _build_html(payload: dict) -> str:
     else:
         sell_html = '<h3 style="color:#b91c1c;">🔴 המלצות מכירה</h3><p>אין יציאות היום.</p>'
 
+    # ── Bond rebalance (buy/sell of bonds) ──
+    if bond_action:
+        bonds_names = " · ".join(f'{n} · נ"ע {sn}' for n, sn in bond_instruments) or "אג\"ח ממשלתי"
+        is_buy = bond_action["side"] == "BUY"
+        color = "#15803d" if is_buy else "#b91c1c"
+        title = "🟢 קניית אג\"ח" if is_buy else "🔴 מכירת אג\"ח"
+        bond_html = (
+            f'<h3 style="color:{color};">{title}</h3>'
+            f'<p style="font-size:14px;">סכום: <b>₪{bond_action["amount"]:,.0f}</b> · '
+            f'יעד הקצאה: {bond_action["target_pct"]:.0f}% מהתיק<br>'
+            f'<span style="color:#374151;">מכשירים: {bonds_names}</span></p>')
+    else:
+        bond_html = ""
+
     # ── Holdings ──
     if holdings:
         hold_rows = "".join(
@@ -213,6 +228,7 @@ def _build_html(payload: dict) -> str:
   {buy_html}
   <br>
   {sell_html}
+  {bond_html}
   <br>
   {proj_html}
   <br>

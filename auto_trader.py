@@ -545,15 +545,18 @@ def run(for_date=None, notify=False):
     bond_value *= (1 + BOND_YIELD)
 
     # Bond rebalance
+    bond_action = None   # ייכלל בהמלצות הקנייה/מכירה היומיות
     portfolio_val = cash + bond_value + equity
     target_bond = portfolio_val * BOND_ALLOC[regime]
     if bond_value < target_bond * 0.95 and cash > (target_bond - bond_value):
         move = min(target_bond - bond_value, cash * 0.4)
         bond_value += move; cash -= move
+        bond_action = {"side": "BUY", "amount": move, "target_pct": BOND_ALLOC[regime] * 100}
         L(f"  אגח: הוספה ₪{move:,.0f} (יעד {BOND_ALLOC[regime]*100:.0f}%)")
     elif bond_value > target_bond * 1.05:
         move = bond_value - target_bond
         cash += move; bond_value -= move
+        bond_action = {"side": "SELL", "amount": move, "target_pct": BOND_ALLOC[regime] * 100}
         L(f"  אגח: משיכה ₪{move:,.0f}")
 
     # ── Check exits ──────────────────────────────────────────────────────────
@@ -770,6 +773,7 @@ def run(for_date=None, notify=False):
                 "holdings": holdings_payload,
                 "projected": projected,
                 "bond_instruments": BOND_INSTRUMENTS.get(regime, BOND_INSTRUMENTS["NEUTRAL"]),
+                "bond_action": bond_action,   # קנייה/מכירה של אג"ח (אם הייתה איזון מחדש)
             }
             send_signals_email(notify_payload)        # מייל (אם מוגדר)
             try:

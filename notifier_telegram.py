@@ -68,6 +68,7 @@ def _build_text(payload: dict) -> str:
     holdings = payload["holdings"]
     projected = payload.get("projected")
     bond_instruments = payload.get("bond_instruments", [])
+    bond_action = payload.get("bond_action")
 
     regime_he = {"BULL": "שורי 🐂", "NEUTRAL": "ניטרלי", "BEAR": "דובי 🐻"}.get(regime, regime)
     reason_he = {"trail_stop": "Trail Stop", "take_profit": "Take Profit",
@@ -106,6 +107,18 @@ def _build_text(payload: dict) -> str:
     else:
         L.append("🔴 <b>מכירות</b>: אין יציאות היום.")
     L.append("")
+
+    # ── אג"ח (איזון מחדש) ──
+    if bond_action:
+        bonds_names = " · ".join(f'{n} (נ"ע {sn})' for n, sn in bond_instruments) or "אג\"ח ממשלתי"
+        if bond_action["side"] == "BUY":
+            L.append(f'🟢 <b>קניית אג"ח: ₪{bond_action["amount"]:,.0f}</b> '
+                     f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)')
+        else:
+            L.append(f'🔴 <b>מכירת אג"ח: ₪{bond_action["amount"]:,.0f}</b> '
+                     f'(יעד {bond_action["target_pct"]:.0f}% מהתיק)')
+        L.append(f"  <i>{bonds_names}</i>")
+        L.append("")
 
     # ── תיק מומלץ אחרי ביצוע ──
     if projected:
