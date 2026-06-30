@@ -113,7 +113,7 @@ INDEX_TICKER = "^TA125.TA"
 RS_LOOKBACK  = 63
 
 # מקור אמת יחיד לשמות/מספרי נייר/אג"ח — ראה securities.py
-from securities import HEBREW_NAMES, SEC_NUMBERS, BOND_INSTRUMENTS, hname
+from securities import HEBREW_NAMES, SEC_NUMBERS, BOND_INSTRUMENTS, MONEY_FUND, hname
 
 
 # ─── Portfolio persistence ─────────────────────────────────────────────────────
@@ -942,9 +942,9 @@ def _render_signals_tab(idx, stocks, portfolio_nis, show_all):
     REGIME_HE = {"BULL": "📈 שוק שורי — BULL", "NEUTRAL": "⚖️ שוק ניטרלי — NEUTRAL", "BEAR": "📉 שוק דובי — BEAR"}
     REGIME_CSS = {"BULL": "regime-bull", "NEUTRAL": "regime-neutral", "BEAR": "regime-bear"}
     REGIME_DESC = {
-        "BULL":    "קנייה: מניות עם מומנטום + RS>3%. TP: ללא תקרה (trail stop בלבד). בונד: 0%",
-        "NEUTRAL": "קנייה: היפוך מגמה (RSI<38 + BB<25%). TP: 30%. בונד: 40% מהתיק",
-        "BEAR":    "אין קניות מניות. הון מופנה לאגרות חוב (60%). ממתינים לחזרת שוק שורי",
+        "BULL":    "קנייה: מניות עם מומנטום + RS>3%. TP: ללא תקרה (trail stop בלבד). קרן כספית: 0%",
+        "NEUTRAL": "קנייה: היפוך מגמה (RSI<38 + BB<25%). TP: 30%. קרן כספית: 40% מהתיק",
+        "BEAR":    "אין קניות מניות. הון מופנה לקרן כספית (60%). ממתינים לחזרת שוק שורי",
     }
 
     st.markdown(f'<div class="{REGIME_CSS[regime]}">{REGIME_HE[regime]}</div>', unsafe_allow_html=True)
@@ -1064,14 +1064,15 @@ def _render_signals_tab(idx, stocks, portfolio_nis, show_all):
 
         st.markdown("---")
 
-    # ── BOND recommendation ───────────────────────────────────────────────────
+    # ── MONEY-FUND recommendation ─────────────────────────────────────────────
     if regime in ("NEUTRAL", "BEAR"):
         bond_alloc = {"NEUTRAL": 40, "BEAR": 60}[regime]
         bond_val   = portfolio_nis * bond_alloc / 100
+        fund_name, fund_secn = MONEY_FUND
         st.info(
-            f"💰 **המלצת אג\"ח:** הפנה {bond_alloc}% מהתיק (₪{bond_val:,.0f}) "
-            f"לאגרות חוב ממשלתיות ישראליות (TLBO.TA / קרן אג\"ח ממ' קצרה) — "
-            f"תשואה שנתית ~3.8%. מסייע לניצול ההון בתקופות חלשות."
+            f"💰 **המלצת קרן כספית:** הפנה {bond_alloc}% מהתיק (₪{bond_val:,.0f}) "
+            f"ל{fund_name} · נ\"ע {fund_secn} — "
+            f"תשואה שנתית ~4.5%, NAV יציב וללא עמלות קנייה/מכירה. מסייע לניצול ההון בתקופות חלשות."
         )
 
     # ── BUY SIGNALS ──────────────────────────────────────────────────────────
