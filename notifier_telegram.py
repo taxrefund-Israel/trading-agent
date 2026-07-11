@@ -29,6 +29,19 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), "telegram_config.json")
 API = "https://api.telegram.org/bot{token}/sendMessage"
 
 
+def _lan_ip() -> str:
+    """כתובת ה-IP ברשת הביתית — לקישורי הדשבורדים בהודעה."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "localhost"
+
+
 def _load_config() -> dict | None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat  = os.environ.get("TELEGRAM_CHAT_ID")
@@ -139,10 +152,14 @@ def _build_text(payload: dict) -> str:
         L.append(f'סה"כ: ₪{projected["total"]:,.0f}')
         L.append("")
 
-    url = dashboard_url()
-    if url:
-        L.append(f'📈 <a href="{url}">צפייה בדשבורד המלא</a>')
-        L.append("")
+    ip = _lan_ip()
+    il_url = dashboard_url() or f"http://{ip}:8501"
+    us_url = (os.environ.get("US_DASHBOARD_URL") or "").strip() or f"http://{ip}:8502"
+    L.append(f'📊 <a href="{il_url}">דשבורד התיק הישראלי</a> · '
+             f'<a href="{us_url}">דשבורד התיק האמריקאי</a>')
+    if ip in il_url or ip in us_url:
+        L.append('<i>(קישור מקומי — פעיל מהרשת הביתית)</i>')
+    L.append("")
     L.append("<i>אינה ייעוץ השקעות. הביצוע באחריותך דרך הברוקר שלך.</i>")
     return "\n".join(L)
 

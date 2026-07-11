@@ -1,0 +1,21 @@
+=== US Momentum Agent — 2026-07-11 15:27 ===
+נתונים: 72 טיקרים, עד 2026-07-10
+אירוע: monthly_rebalance | משטר: BULL | תיק: $99,951 (+0.00%)
+  BUY MU x20 @ $979.3
+  BUY INTC x178 @ $109.84
+  BUY LRCX x55 @ $350.33
+  BUY AMD x35 @ $557.89
+  BUY AMAT x32 @ $602.5
+שגיאה: 'charmap' codec can't encode character '\u2713' in position 12: character maps to <undefined>
+=== US Momentum Agent — 2026-07-11 15:28 (resend) ===
+נתונים: 72 טיקרים, עד 2026-07-10
+אירוע: status | משטר: BULL | תיק: $99,951 (+0.00%)
+טלגרם: נשלח ✓
+=== US Momentum Agent — 2026-07-11 15:44 (resend) ===
+נתונים: 72 טיקרים, עד 2026-07-10
+אירוע: status | משטר: BULL | תיק: $99,951 (+0.00%)
+טלגרם: נשלח ✓
+=== US Momentum Agent — 2026-07-11 15:57 (resend) ===
+נתונים: 73 טיקרים, עד 2026-07-10
+אירוע: status | משטר: BULL | תיק: $99,951 (+0.00%)
+טלגרם: נשלח ✓
