@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import hashlib as _hashlib
 import json
 import os
 from datetime import datetime
@@ -48,6 +49,38 @@ def load_state():
     with open(STATE_FILE, encoding="utf-8") as f:
         return json.load(f)
 
+
+# ─── שער סיסמה — זהה לדשבורד הישראלי (אותה סיסמה, אותו מנגנון) ────────────────
+# SHA-256 של הסיסמה; הסיסמה עצמה לא נשמרת בקוד/בגיט.
+# ניתן לעקוף עם st.secrets["dashboard_password"].
+_DASH_PW_HASH = "3090009d6533b344b3a4aae98c2133d3f394148243d9417f9f83dfd20d450182"
+
+
+def _check_password() -> bool:
+    expected_hash = _DASH_PW_HASH
+    try:
+        if "dashboard_password" in st.secrets:
+            expected_hash = _hashlib.sha256(
+                str(st.secrets["dashboard_password"]).encode()).hexdigest()
+    except Exception:
+        pass
+
+    if st.session_state.get("_authed"):
+        return True
+
+    st.markdown("### 🔒 כניסה לדשבורד")
+    pw = st.text_input("סיסמה", type="password", key="_pw_input")
+    if st.button("כניסה"):
+        if _hashlib.sha256((pw or "").encode()).hexdigest() == expected_hash:
+            st.session_state["_authed"] = True
+            st.rerun()
+        else:
+            st.error("סיסמה שגויה")
+    st.stop()
+    return False
+
+
+_check_password()
 
 state = load_state()
 st.title('🇺🇸 מומנטום ארה"ב — רוטציה שבועית')
