@@ -75,6 +75,10 @@ def min_qty_for(sym):
 # משמש בעיקר להשוואת backtest בין שתי ההתנהגויות.
 STOP_LOSS_RESPECTS_MIN_HOLD = False
 
+# תקופת צינון: נייר שנמכר לא ייקנה מחדש למשך N ימי מסחר.
+# מונע churn של מכירה-על-סטופ ואז קנייה מיידית של אותו נייר כשהוא oversold.
+COOLDOWN_DAYS = 5
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def _last(s):
     v = s.dropna()
@@ -644,11 +648,23 @@ def run(for_date=None, notify=False):
         pending_syms = set(r["symbol"] for r in conn.execute(
             "SELECT DISTINCT symbol FROM orders WHERE status IN ('PENDING','PARTIAL')"
         ).fetchall())
+        # תקופת צינון — ניירות שנמכרו ב-COOLDOWN_DAYS ימי המסחר האחרונים (כולל היום)
+        # לא ייחשבו מועמדים לקנייה. idx_df.index הם ימי מסחר עד היום.
+        trading_days = list(idx_df.index)
+        cutoff = trading_days[-(COOLDOWN_DAYS + 1)] if len(trading_days) > COOLDOWN_DAYS else trading_days[0]
+        cutoff_str = cutoff.strftime("%Y-%m-%d")
+        cooldown_syms = set(r["symbol"] for r in conn.execute(
+            "SELECT DISTINCT symbol FROM trades WHERE action='SELL' AND ts > ? AND ts <= ?",
+            (cutoff_str, today_str)
+        ).fetchall())
         conn.close()
 
         candidates = []
         for sym, df in stock_data.items():
             if sym in positions or sym in pending_syms: continue
+            if sym in cooldown_syms:
+                L(f"    COOLDOWN {sym}: נמכר ב-{COOLDOWN_DAYS} ימי המסחר האחרונים — מדלג")
+                continue
             if len(df) < 60: continue
             ok, n_bull = buy_signal(df, idx_df, regime)
             if ok:
