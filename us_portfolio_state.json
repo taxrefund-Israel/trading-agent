@@ -129,10 +129,19 @@
       "ndx": 27987.638671875,
       "bull": true,
       "event": "status"
+    },
+    {
+      "date": "2026-08-03",
+      "value": 84192.67,
+      "spx": 7573.64990234375,
+      "dji": 53005.109375,
+      "ndx": 28633.365234375,
+      "bull": true,
+      "event": "monthly_rebalance"
     }
   ],
   "bull": true,
-  "last_rebal_month": "2026-07",
+  "last_rebal_month": "2026-08",
   "inception": {
     "date": "2026-07-11",
     "value": 99951.3940905609,
