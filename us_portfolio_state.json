@@ -138,6 +138,15 @@
       "ndx": 28633.365234375,
       "bull": true,
       "event": "monthly_rebalance"
+    },
+    {
+      "date": "2026-08-10",
+      "value": 88436.37,
+      "spx": 7751.330078125,
+      "dji": 53940.26953125,
+      "ndx": 29651.123046875,
+      "bull": true,
+      "event": "status"
     }
   ],
   "bull": true,
