@@ -1,7 +1,11 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-דשבורד מומנטום ארה"ב — Streamlit
-הרצה: streamlit run us_dashboard.py --server.port 8502
+דשבורד מומנטום ארה"ב — Streamlit.
+
+שני מצבי שימוש:
+  1. עצמאי:   streamlit run us_dashboard.py --server.port 8502
+  2. משובץ:   from us_dashboard import render_us_section
+             render_us_section(mobile=...)   ← מוצג מתחת לדשבורד הישראלי
 מציג: מצב משטר, התיק הנוכחי, דירוג מומנטום מלא, עקומת הון מול המדדים, יומן עסקאות.
 """
 from __future__ import annotations
@@ -17,22 +21,20 @@ import streamlit as st
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(BASE, "us_portfolio_state.json")
 
-st.set_page_config(page_title='מומנטום ארה"ב', page_icon="🇺🇸", layout="wide")
 
-st.markdown("""
-<style>
-  .stApp { direction: rtl; }
-  h1, h2, h3, p, div, span { text-align: right; }
-  .regime-bull { background:#0a3d1e; color:#4ade80; padding:12px 18px;
-                 border-radius:10px; font-size:1.2rem; font-weight:bold; }
-  .regime-bear { background:#450a0a; color:#f87171; padding:12px 18px;
-                 border-radius:10px; font-size:1.2rem; font-weight:bold; }
-  [data-testid="stMetricValue"] { direction: ltr; }
-</style>
-""", unsafe_allow_html=True)
+def _inject_us_css():
+    st.markdown("""
+    <style>
+      .us-regime-bull { background:#0a3d1e; color:#4ade80; padding:12px 18px;
+                        border-radius:10px; font-size:1.2rem; font-weight:bold; }
+      .us-regime-bear { background:#450a0a; color:#f87171; padding:12px 18px;
+                        border-radius:10px; font-size:1.2rem; font-weight:bold; }
+      [data-testid="stMetricValue"] { direction: ltr; }
+    </style>
+    """, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=1800, show_spinner="טוען נתוני שוק...")
+@st.cache_data(ttl=1800, show_spinner="טוען נתוני שוק אמריקאיים...")
 def market_data():
     import yfinance as yf
     from backtest_us_v1 import UNIVERSE
@@ -50,9 +52,7 @@ def load_state():
         return json.load(f)
 
 
-# ─── שער סיסמה — זהה לדשבורד הישראלי (אותה סיסמה, אותו מנגנון) ────────────────
-# SHA-256 של הסיסמה; הסיסמה עצמה לא נשמרת בקוד/בגיט.
-# ניתן לעקוף עם st.secrets["dashboard_password"].
+# ─── שער סיסמה (רק במצב עצמאי) — זהה לדשבורד הישראלי ──────────────────────────
 _DASH_PW_HASH = "3090009d6533b344b3a4aae98c2133d3f394148243d9417f9f83dfd20d450182"
 
 
@@ -80,116 +80,135 @@ def _check_password() -> bool:
     return False
 
 
-_check_password()
+def render_us_section(mobile: bool = False):
+    """מציג את כל תוכן דשבורד ארה"ב. בטוח לקריאה מתוך אפליקציה אחרת
+    (לא קורא ל-set_page_config ולא ל-st.stop())."""
+    _inject_us_css()
+    st.header('🇺🇸 מומנטום ארה"ב — רוטציה שבועית')
 
-state = load_state()
-st.title('🇺🇸 מומנטום ארה"ב — רוטציה שבועית')
+    state = load_state()
+    if state is None:
+        st.warning("עוד לא קיים תיק אמריקאי — הרץ פעם אחת את us_agent.py כדי לאתחל.")
+        return
+    try:
+        px = market_data()
+    except Exception as e:
+        st.error(f"שגיאה בטעינת נתוני שוק אמריקאיים: {e}")
+        return
 
-if state is None:
-    st.warning("עוד לא קיים תיק — הרץ פעם אחת את us_agent.py כדי לאתחל.")
-    st.stop()
+    prices = px.iloc[-1]
+    spx = px["^GSPC"].dropna(); ndx = px["^NDX"].dropna()
+    spx_c = float(spx.iloc[-1]); ndx_c = float(ndx.iloc[-1])
+    spx_dist = (spx_c / float(spx.rolling(200).mean().iloc[-1]) - 1) * 100
+    ndx_dist = (ndx_c / float(ndx.rolling(200).mean().iloc[-1]) - 1) * 100
+    bull = spx_dist > 0 and ndx_dist > 0   # משטר היברידי (v5b): שני המדדים מעל SMA200
 
-px = market_data()
-prices = px.iloc[-1]
-spx = px["^GSPC"].dropna()
-ndx = px["^NDX"].dropna()
-spx_c = float(spx.iloc[-1])
-ndx_c = float(ndx.iloc[-1])
-spx_dist = (spx_c / float(spx.rolling(200).mean().iloc[-1]) - 1) * 100
-ndx_dist = (ndx_c / float(ndx.rolling(200).mean().iloc[-1]) - 1) * 100
-# משטר היברידי (v5b): שורי רק כששני המדדים מעל SMA200
-bull = spx_dist > 0 and ndx_dist > 0
+    stocks = [c for c in px.columns if not c.startswith("^")]
+    mom = (px[stocks].iloc[-21] / px[stocks].iloc[-252] - 1).dropna().sort_values(ascending=False)
+    rank_of = {s: i + 1 for i, s in enumerate(mom.index)}
 
-stocks = [c for c in px.columns if not c.startswith("^")]
-mom = (px[stocks].iloc[-21] / px[stocks].iloc[-252] - 1).dropna().sort_values(ascending=False)
-rank_of = {s: i + 1 for i, s in enumerate(mom.index)}
+    held_val = sum(h["qty"] * float(prices[s]) for s, h in state["positions"].items()
+                   if s in prices and pd.notna(prices[s]))
+    pv = state["cash"] + held_val
+    inc = state["inception"] or {"value": pv, "spx": spx_c, "dji": float(px["^DJI"].dropna().iloc[-1])}
+    cum = (pv / inc["value"] - 1) * 100
+    spx_cum = (spx_c / inc["spx"] - 1) * 100
+    dji_cum = (float(px["^DJI"].dropna().iloc[-1]) / inc["dji"] - 1) * 100
+    ndx_cum = (ndx_c / inc.get("ndx", ndx_c) - 1) * 100
 
-# ─── שורה עליונה: משטר + מדדים ────────────────────────────────────────────────
-held_val = sum(h["qty"] * float(prices[s]) for s, h in state["positions"].items()
-               if s in prices and pd.notna(prices[s]))
-pv = state["cash"] + held_val
-inc = state["inception"] or {"value": pv, "spx": spx_c, "dji": float(px["^DJI"].dropna().iloc[-1])}
-cum = (pv / inc["value"] - 1) * 100
-spx_cum = (spx_c / inc["spx"] - 1) * 100
-dji_cum = (float(px["^DJI"].dropna().iloc[-1]) / inc["dji"] - 1) * 100
-ndx_cum = (ndx_c / inc.get("ndx", ndx_c) - 1) * 100
-
-c1, c2, c3, c4, c5, c6 = st.columns([2, 1, 1, 1, 1, 1])
-with c1:
-    cls = "regime-bull" if bull else "regime-bear"
+    # ── משטר + מדדים ──────────────────────────────────────────────────────────
+    cls = "us-regime-bull" if bull else "us-regime-bear"
     detail = f"SPX ‏{spx_dist:+.1f}% · NDX ‏{ndx_dist:+.1f}% מול SMA200"
     txt = f"🐂 שוק שורי — {detail}" if bull else f"🐻 שוק דובי — {detail}"
     st.markdown(f'<div class="{cls}">{txt}</div>', unsafe_allow_html=True)
-    st.caption("משטר היברידי (SPX+NDX) שבועי · ריבאלנס מומנטום: חודשי · Top5, buffer 12")
-c2.metric("שווי התיק", f"${pv:,.0f}", f"{cum:+.2f}%")
-c3.metric("אלפא מול S&P", f"{cum - spx_cum:+.2f}%")
-c4.metric("S&P 500 מאז ההתחלה", f"{spx_cum:+.2f}%")
-c5.metric('נאסד"ק 100 מאז ההתחלה', f"{ndx_cum:+.2f}%")
-c6.metric("דאו ג'ונס מאז ההתחלה", f"{dji_cum:+.2f}%")
+    st.caption("משטר היברידי (SPX+NDX) שבועי · ריבאלנס מומנטום חודשי · Top5, buffer 12")
 
-st.divider()
-col_l, col_r = st.columns([3, 2])
+    metrics = [
+        ("שווי התיק", f"${pv:,.0f}", f"{cum:+.2f}%"),
+        ("אלפא מול S&P", f"{cum - spx_cum:+.2f}%", None),
+        ("S&P 500 מההתחלה", f"{spx_cum:+.2f}%", None),
+        ('נאסד"ק 100 מההתחלה', f"{ndx_cum:+.2f}%", None),
+        ("דאו ג'ונס מההתחלה", f"{dji_cum:+.2f}%", None),
+    ]
+    cols = st.columns(2 if mobile else 5)
+    for i, (label, val, delta) in enumerate(metrics):
+        cols[i % len(cols)].metric(label, val, delta)
 
-# ─── עקומת הון ────────────────────────────────────────────────────────────────
-with col_l:
-    st.subheader("📈 התיק מול המדדים")
-    hist = pd.DataFrame(state["history"])
-    if len(hist) >= 2:
-        hist["date"] = pd.to_datetime(hist["date"])
-        hist = hist.set_index("date")
-        series = {
-            "התיק":    hist["value"] / inc["value"] * 100 - 100,
-            "S&P 500": hist["spx"] / inc["spx"] * 100 - 100,
-            "דאו ג'ונס": hist["dji"] / inc["dji"] * 100 - 100,
-        }
-        if "ndx" in hist.columns and "ndx" in inc:
-            series['נאסד"ק 100'] = hist["ndx"] / inc["ndx"] * 100 - 100
-        st.line_chart(pd.DataFrame(series), height=340)
-    else:
-        st.info("עקומת ההון תופיע אחרי כמה ריצות שבועיות.")
+    st.divider()
 
-    st.subheader("🎯 התיק הנוכחי")
-    if state["positions"]:
+    def _equity_and_portfolio():
+        st.subheader("📈 התיק מול המדדים")
+        hist = pd.DataFrame(state["history"])
+        if len(hist) >= 2:
+            hist["date"] = pd.to_datetime(hist["date"]); hist = hist.set_index("date")
+            series = {
+                "התיק":    hist["value"] / inc["value"] * 100 - 100,
+                "S&P 500": hist["spx"] / inc["spx"] * 100 - 100,
+                "דאו ג'ונס": hist["dji"] / inc["dji"] * 100 - 100,
+            }
+            if "ndx" in hist.columns and "ndx" in inc:
+                series['נאסד"ק 100'] = hist["ndx"] / inc["ndx"] * 100 - 100
+            st.line_chart(pd.DataFrame(series), height=340)
+        else:
+            st.info("עקומת ההון תופיע אחרי כמה ריצות שבועיות.")
+
+        st.subheader("🎯 התיק הנוכחי")
+        if state["positions"]:
+            rows = []
+            for s, h in state["positions"].items():
+                p = float(prices[s]) if s in prices and pd.notna(prices[s]) else None
+                avg = h["cost"] / h["qty"]
+                rows.append({
+                    "מניה": s, "דירוג": rank_of.get(s, "—"), "כמות": h["qty"],
+                    "מחיר קנייה": round(avg, 2), "מחיר נוכחי": round(p, 2) if p else "—",
+                    "שווי $": round(h["qty"] * p, 0) if p else "—",
+                    "רווח %": round((p / avg - 1) * 100, 1) if p else "—",
+                    "נקנתה": h.get("buy_date", "—"),
+                })
+            st.dataframe(pd.DataFrame(rows).sort_values("דירוג"),
+                         width='stretch', hide_index=True)
+            st.caption(f'💵 מזומן/קרן כספית: ${state["cash"]:,.0f} · '
+                       f'מס ששולם מצטבר: ${state.get("tax_paid", 0):,.0f}')
+        else:
+            st.info("אין פוזיציות — התיק בקרן כספית (שוק דובי) או טרם אותחל.")
+
+    def _momentum():
+        st.subheader("🏁 דירוג מומנטום 12-1")
+        st.caption("ירוק = מוחזק · צהוב = באזור החוצץ (6–12) · מכירה רק מתחת לדירוג 12")
         rows = []
-        for s, h in state["positions"].items():
-            p = float(prices[s]) if s in prices and pd.notna(prices[s]) else None
-            avg = h["cost"] / h["qty"]
-            rows.append({
-                "מניה": s, "דירוג": rank_of.get(s, "—"), "כמות": h["qty"],
-                "מחיר קנייה": round(avg, 2), "מחיר נוכחי": round(p, 2) if p else "—",
-                "שווי $": round(h["qty"] * p, 0) if p else "—",
-                "רווח %": round((p / avg - 1) * 100, 1) if p else "—",
-                "נקנתה": h.get("buy_date", "—"),
-            })
-        dfp = pd.DataFrame(rows).sort_values("דירוג")
-        st.dataframe(dfp, width='stretch', hide_index=True)
-        st.caption(f'💵 מזומן/קרן כספית: ${state["cash"]:,.0f} · '
-                   f'מס ששולם מצטבר: ${state.get("tax_paid", 0):,.0f}')
+        for i, (s, m) in enumerate(mom.head(20).items(), start=1):
+            held = s in state["positions"]
+            zone = "✅ מוחזק" if held else ("🎯 טופ-5" if i <= 5 else ("🟡 חוצץ" if i <= 12 else ""))
+            rows.append({"#": i, "מניה": s, "מומנטום 12-1": f"{m*100:+.1f}%", "סטטוס": zone})
+        st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True,
+                     height=None if mobile else 560)
+
+    if mobile:
+        _equity_and_portfolio()
+        _momentum()
     else:
-        st.info("אין פוזיציות — התיק בקרן כספית (שוק דובי) או טרם אותחל.")
+        col_l, col_r = st.columns([3, 2])
+        with col_l: _equity_and_portfolio()
+        with col_r: _momentum()
 
-# ─── דירוג מומנטום ────────────────────────────────────────────────────────────
-with col_r:
-    st.subheader("🏁 דירוג מומנטום 12-1")
-    st.caption("ירוק = מוחזק · צהוב = באזור החוצץ (6–12) · מכירה רק מתחת לדירוג 12")
-    top = mom.head(20)
-    rows = []
-    for i, (s, m) in enumerate(top.items(), start=1):
-        held = s in state["positions"]
-        zone = "✅ מוחזק" if held else ("🎯 טופ-5" if i <= 5 else ("🟡 חוצץ" if i <= 12 else ""))
-        rows.append({"#": i, "מניה": s, "מומנטום 12-1": f"{m*100:+.1f}%", "סטטוס": zone})
-    st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True, height=560)
+    # ── יומן עסקאות ────────────────────────────────────────────────────────────
+    st.divider()
+    st.subheader("📜 יומן עסקאות")
+    if state["trades"]:
+        dft = pd.DataFrame(state["trades"])[::-1].rename(columns={
+            "date": "תאריך", "side": "פעולה", "sym": "מניה", "qty": "כמות",
+            "price": "מחיר $", "pnl_pct": "רווח %", "tax": "מס $",
+            "rank": "דירוג", "reason": "סיבה"})
+        st.dataframe(dft, width='stretch', hide_index=True)
+    else:
+        st.info("אין עסקאות עדיין.")
+    st.caption(f"עודכן: {datetime.now():%Y-%m-%d %H:%M} · תיק נייר · אינו ייעוץ השקעות")
 
-# ─── יומן עסקאות ──────────────────────────────────────────────────────────────
-st.divider()
-st.subheader("📜 יומן עסקאות")
-if state["trades"]:
-    dft = pd.DataFrame(state["trades"])[::-1]
-    dft = dft.rename(columns={"date": "תאריך", "side": "פעולה", "sym": "מניה",
-                              "qty": "כמות", "price": "מחיר $", "pnl_pct": "רווח %",
-                              "tax": "מס $", "rank": "דירוג", "reason": "סיבה"})
-    st.dataframe(dft, width='stretch', hide_index=True)
-else:
-    st.info("אין עסקאות עדיין.")
 
-st.caption(f"עודכן: {datetime.now():%Y-%m-%d %H:%M} · תיק נייר · אינו ייעוץ השקעות")
+# ─── מצב עצמאי בלבד ───────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    st.set_page_config(page_title='מומנטום ארה"ב', page_icon="🇺🇸", layout="wide")
+    st.markdown("<style>.stApp{direction:rtl;} h1,h2,h3,p,div,span{text-align:right;}</style>",
+                unsafe_allow_html=True)
+    _check_password()
+    render_us_section(mobile=False)

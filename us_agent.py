@@ -302,14 +302,15 @@ def build_message(r: dict) -> str:
     top5 = " · ".join(f'{s}#{i+1}' for i, s in enumerate(r["ranked"].index[:5]))
     L.append(f'📈 טופ-5 מומנטום: {top5}')
     L.append("")
-    ip = lan_ip()
-    us_url = (os.environ.get("US_DASHBOARD_URL") or "").strip() or f"http://{ip}:8502"
-    il_url = (os.environ.get("DASHBOARD_URL") or "").strip() or f"http://{ip}:8501"
-    L.append(f'📊 <a href="{us_url}">דשבורד התיק האמריקאי</a> · '
-             f'<a href="{il_url}">דשבורד התיק הישראלי</a>')
-    if us_url.startswith("http://") and ip in us_url:
-        L.append('<i>(הקישורים פעילים מהרשת הביתית)</i>')
-    L.append("")
+    # דשבורד אחד מכיל את שני התיקים (ישראל למעלה, ארה"ב מתחת).
+    try:
+        from securities import dashboard_url
+        url = dashboard_url()
+    except Exception:
+        url = (os.environ.get("DASHBOARD_URL") or "").strip() or None
+    if url:
+        L.append(f'📊 <a href="{url}">צפייה בדשבורד (ישראל + ארה"ב)</a>')
+        L.append("")
     L.append("<i>תיק נייר. אינה ייעוץ השקעות — הביצוע באחריותך.</i>")
     return "\n".join(L)
 

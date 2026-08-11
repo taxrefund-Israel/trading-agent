@@ -152,14 +152,11 @@ def _build_text(payload: dict) -> str:
         L.append(f'סה"כ: ₪{projected["total"]:,.0f}')
         L.append("")
 
-    ip = _lan_ip()
-    il_url = dashboard_url() or f"http://{ip}:8501"
-    us_url = (os.environ.get("US_DASHBOARD_URL") or "").strip() or f"http://{ip}:8502"
-    L.append(f'📊 <a href="{il_url}">דשבורד התיק הישראלי</a> · '
-             f'<a href="{us_url}">דשבורד התיק האמריקאי</a>')
-    if ip in il_url or ip in us_url:
-        L.append('<i>(קישור מקומי — פעיל מהרשת הביתית)</i>')
-    L.append("")
+    # דשבורד אחד מכיל את שני התיקים (ישראל למעלה, ארה"ב מתחת).
+    url = dashboard_url()
+    if url:
+        L.append(f'📊 <a href="{url}">צפייה בדשבורד (ישראל + ארה"ב)</a>')
+        L.append("")
     L.append("<i>אינה ייעוץ השקעות. הביצוע באחריותך דרך הברוקר שלך.</i>")
     return "\n".join(L)
 

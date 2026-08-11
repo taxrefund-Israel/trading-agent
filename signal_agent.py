@@ -934,6 +934,14 @@ def main():
             snaps, pos_df, trades_df, grlog_df, orders_df = load_paper_data()
             paper_tab(snaps, pos_df, trades_df, grlog_df, orders_df, stocks, idx)
 
+    # ── דשבורד התיק האמריקאי — ברצף מתחת (ללא ניווט/לשוניות) ──────────────────
+    st.markdown("---")
+    try:
+        from us_dashboard import render_us_section
+        render_us_section(mobile=is_mobile())
+    except Exception as e:
+        st.info(f"התיק האמריקאי אינו זמין כרגע: {e}")
+
 
 def _render_signals_tab(idx, stocks, portfolio_nis, show_all):
     # ── Regime banner ─────────────────────────────────────────────────────────
