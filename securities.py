@@ -92,9 +92,14 @@ def sec_number(sym: str) -> str | None:
     return SEC_NUMBERS.get(sym)
 
 
+# כתובת הדשבורד הציבורי ב-Streamlit — ברירת מחדל קבועה כשאין משתנה סביבה
+# (הרצות מקומיות לא מגדירות DASHBOARD_URL, ואז נשלח קישור לוקאלהוסט חסר תועלת).
+DEFAULT_DASHBOARD_URL = "https://trading-agent-3xxzhldft5fbnuy6kvpipt.streamlit.app"
+
+
 def dashboard_url() -> str | None:
-    """כתובת הדשבורד לקישור בהודעות. נקראת ממשתנה הסביבה DASHBOARD_URL
-    (מוגדר ב-GitHub Actions). מחזיר None אם לא הוגדרה."""
+    """כתובת הדשבורד לקישור בהודעות. קודם משתנה הסביבה DASHBOARD_URL
+    (מוגדר ב-GitHub Actions), אחרת ברירת המחדל הציבורית ב-Streamlit."""
     import os
     url = (os.environ.get("DASHBOARD_URL") or "").strip()
-    return url or None
+    return url or DEFAULT_DASHBOARD_URL
