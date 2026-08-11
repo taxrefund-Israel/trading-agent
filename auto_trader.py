@@ -349,14 +349,16 @@ def try_fill_pending_orders(stock_data, cash, positions, regime, L, today_str=No
                 # עדכון פוזיציה קיימת (הוספת טרנש) או יצירה חדשה
                 if sym in positions:
                     pos = positions[sym]
-                    old_cost  = pos["avg_cost"] * pos["qty"]
+                    # בסיס העלות נשמר תחת entry_price (עמודת ה-DB) — לא avg_cost.
+                    # פוזיציה שנטענה מה-DB אין לה avg_cost, ולכן קריאה ממנו קרסה.
+                    old_cost  = pos["entry_price"] * pos["qty"]
                     new_qty   = pos["qty"] + qty
                     new_cost  = (old_cost + qty * fill_price) / new_qty
-                    pos["qty"]      = new_qty
-                    pos["avg_cost"] = new_cost
-                    pos["trail_high"] = max(pos.get("trail_high", fill_price), fill_price)
+                    pos["qty"]         = new_qty
+                    pos["entry_price"] = new_cost
+                    pos["trail_high"]  = max(pos.get("trail_high", fill_price), fill_price)
                     save_position({**pos, "symbol": sym,
-                                   "entry_price": pos["avg_cost"],
+                                   "entry_price": new_cost,
                                    "trail_high": pos["trail_high"]})
                 else:
                     new_pos = {
@@ -365,7 +367,6 @@ def try_fill_pending_orders(stock_data, cash, positions, regime, L, today_str=No
                         "qty": qty, "pos_pct": round(qty * fill_price / 100_000 * 100, 2),
                         "entry_regime": order["regime"],
                         "trail_high": fill_price, "days_held": 0, "status": "OPEN",
-                        "avg_cost": fill_price,
                     }
                     positions[sym] = new_pos
                     save_position(new_pos)
