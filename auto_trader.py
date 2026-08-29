@@ -512,7 +512,10 @@ def run(for_date=None, notify=False):
     # אם הנר האחרון אינו של today_str, אין מסחר ביום הזה (חג כמו שבועות, או נתונים
     # שעוד לא התעדכנו) — לא יוצרים snapshot; ה-catchup יתפוס אותו כשהנתונים יגיעו.
     last_bar = idx_df.index[-1].strftime("%Y-%m-%d")
-    if last_bar != today_str:
+    # דולגים אם אין נר להיום, וגם אם יש נר אך הסגירה NaN (נר "רפאים" שמחזיר
+    # yfinance ליום לא-מסחר/לפני התייצבות הנתונים — בעיקר שישי). ה-catchup יתפוס
+    # את היום כשהנתונים האמיתיים יגיעו. מונע portfolio_value=NaN בשמירת snapshot.
+    if last_bar != today_str or pd.isna(idx_df["Close"].iloc[-1]):
         L(f"  {today_str} אינו יום מסחר בת\"א (נר אחרון: {last_bar}) — דולג")
         return
 
@@ -526,7 +529,9 @@ def run(for_date=None, notify=False):
             # שמירה קריטית: סוחרים נייר רק אם נסחר בפועל ביום הזה (נר אמיתי ל-today_str).
             # כך לעולם לא נקנה/נמכור נייר שלא היה קיים/לא נסחר באותו יום (טרם הונפק,
             # הושעה, או נמחק מהמסחר).
-            if df.index[-1].strftime("%Y-%m-%d") != today_str:
+            # נר אמיתי להיום בלבד: תאריך תואם וגם סגירה שאינה NaN (מגן על כל
+            # חישובי ה-mark-to-market מ-NaN שדולף לשווי התיק).
+            if df.index[-1].strftime("%Y-%m-%d") != today_str or pd.isna(df["Close"].iloc[-1]):
                 skipped_no_bar.append(sym)
                 continue
             stock_data[sym] = df
@@ -534,6 +539,13 @@ def run(for_date=None, notify=False):
     L(f"  נטענו {len(stock_data)} מניות (נסחרו בפועל ב-{today_str})")
     if skipped_no_bar:
         L(f"  דולגו (אין נר מסחר ל-{today_str}): {', '.join(skipped_no_bar)}")
+
+    # אם מחזיקים פוזיציות אך לאף אחת אין נתון תקין להיום — בעיית נתונים (לא ניתן
+    # לשערך את התיק). דוחים את היום כדי לא לשמור snapshot מעוות. ה-catchup יחזור.
+    held = set(positions.keys())
+    if held and not (held & set(stock_data.keys())):
+        L(f"  {today_str}: אין נתונים תקינים לאף פוזיציה מוחזקת — יום נדחה (בעיית נתונים)")
+        return
 
     # Regime
     regime = classify_regime(idx_df)
