@@ -121,7 +121,7 @@ def render_us_section(mobile: bool = False):
     detail = f"SPX ‏{spx_dist:+.1f}% · NDX ‏{ndx_dist:+.1f}% מול SMA200"
     txt = f"🐂 שוק שורי — {detail}" if bull else f"🐻 שוק דובי — {detail}"
     st.markdown(f'<div class="{cls}">{txt}</div>', unsafe_allow_html=True)
-    st.caption("משטר היברידי (SPX+NDX) שבועי · ריבאלנס מומנטום חודשי · Top5, buffer 12")
+    st.caption("משטר היברידי (SPX+NDX) שבועי · ריבאלנס מומנטום חודשי · Top6, buffer 14, מקס' מניה לסקטור")
 
     metrics = [
         ("שווי התיק", f"${pv:,.0f}", f"{cum:+.2f}%"),
@@ -174,12 +174,14 @@ def render_us_section(mobile: bool = False):
 
     def _momentum():
         st.subheader("🏁 דירוג מומנטום 12-1")
-        st.caption("ירוק = מוחזק · צהוב = באזור החוצץ (6–12) · מכירה רק מתחת לדירוג 12")
+        st.caption("ירוק = מוחזק · צהוב = באזור החוצץ (7–14) · מכירה מתחת לדירוג 14 · מקסימום מניה אחת לסקטור")
+        from backtest_us_v6_next import SECTOR
         rows = []
         for i, (s, m) in enumerate(mom.head(20).items(), start=1):
             held = s in state["positions"]
-            zone = "✅ מוחזק" if held else ("🎯 טופ-5" if i <= 5 else ("🟡 חוצץ" if i <= 12 else ""))
-            rows.append({"#": i, "מניה": s, "מומנטום 12-1": f"{m*100:+.1f}%", "סטטוס": zone})
+            zone = "✅ מוחזק" if held else ("🎯 טופ-6" if i <= 6 else ("🟡 חוצץ" if i <= 14 else ""))
+            rows.append({"#": i, "מניה": s, "סקטור": SECTOR.get(s, "—"),
+                         "מומנטום 12-1": f"{m*100:+.1f}%", "סטטוס": zone})
         st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True,
                      height=None if mobile else 560)
 

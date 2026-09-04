@@ -32,11 +32,13 @@ try:
 except Exception:
     pass
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from backtest_us_v1 import UNIVERSE  # single source of truth for the universe
+from backtest_us_v1 import UNIVERSE       # single source of truth for the universe
+from backtest_us_v6_next import SECTOR    # sector map for the diversification cap
 
-# ─── קונפיגורציה ──────────────────────────────────────────────────────────────
-TOP_N        = 5
-KEEP_RANK    = 12
+# ─── קונפיגורציה (v6, מ-2026-09-05): Top6 + תקרת סקטור 1 ─────────────────────
+TOP_N        = 6
+KEEP_RANK    = 14
+SECTOR_CAP   = 1   # מקסימום מניה אחת מכל סקטור — הלקח מקריסת המוליכים-למחצה
 COMMISSION   = 0.0005
 TAX_RATE     = 0.25
 INITIAL_CASH = 100_000.0
@@ -138,11 +140,18 @@ def do_buys(state, ranked, prices, today, reason):
             if s not in state["positions"] and pd.notna(prices.get(s))]
     if not pool:
         return actions
+    sec_count: dict[str, int] = {}
+    for held in state["positions"]:
+        sec = SECTOR.get(held, "?")
+        sec_count[sec] = sec_count.get(sec, 0) + 1
     per_slot = state["cash"] * 0.98 / slots
     filled = 0
     for s in pool:
         if filled >= slots:
             break
+        sec = SECTOR.get(s, "?")
+        if sec_count.get(sec, 0) >= SECTOR_CAP:
+            continue  # הסקטור כבר מיוצג — עוברים למדורגת הבאה
         p = float(prices[s])
         qty = int(per_slot / (p * (1 + COMMISSION)))
         if qty < 1:
@@ -157,6 +166,7 @@ def do_buys(state, ranked, prices, today, reason):
         state["trades"].append(t)
         actions.append(t)
         filled += 1
+        sec_count[sec] = sec_count.get(sec, 0) + 1
     return actions
 
 
@@ -299,8 +309,8 @@ def build_message(r: dict) -> str:
     if r["event"] == "bear_exit" or r["cash"] > r["pv"] * 0.10:
         L.append(f'🏦 לחניית המזומן: {MMF_REC}')
     L.append("")
-    top5 = " · ".join(f'{s}#{i+1}' for i, s in enumerate(r["ranked"].index[:5]))
-    L.append(f'📈 טופ-5 מומנטום: {top5}')
+    top6 = " · ".join(f'{s}#{i+1}' for i, s in enumerate(r["ranked"].index[:6]))
+    L.append(f'📈 טופ-6 מומנטום: {top6}')
     L.append("")
     # דשבורד אחד מכיל את שני התיקים (ישראל למעלה, ארה"ב מתחת).
     try:
