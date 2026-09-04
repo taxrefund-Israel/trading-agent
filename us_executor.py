@@ -143,6 +143,18 @@ def build_target_orders(ib, cfg, log) -> tuple[list[dict], float, float]:
     from backtest_us_v1 import UNIVERSE
 
     state, agent_val = load_agent_state()
+
+    # ביטול פקודות פתוחות על ניירות היקום — כדי שהיישור לא ייצור קנייה כפולה
+    universe_syms = {ib_symbol(s) for s in UNIVERSE}
+    open_trades = [t for t in ib.reqAllOpenOrders()
+                   if t.contract.symbol in universe_syms
+                   and t.orderStatus.status in ("Submitted", "PreSubmitted", "PendingSubmit")]
+    for t in open_trades:
+        log(f"  מבטל פקודה פתוחה: {t.order.action} {t.contract.symbol} x{t.order.totalQuantity}")
+        ib.cancelOrder(t.order)
+    if open_trades:
+        ib.sleep(3)
+
     netliq = None
     for v in ib.accountValues():
         if v.tag == "NetLiquidation" and v.currency == "USD":
@@ -270,8 +282,9 @@ def main():
     token, chat = tg_creds()
 
     # מנעול כפילות: אם כבר בוצעו פקודות היום — לא רצים שוב
+    # (לא חל על sync-target — יישור הוא פעולה מכוונת וחוזרת)
     marker = os.path.join(BASE, "logs_us", f"executed_{args.date}.marker")
-    if os.path.exists(marker) and not args.dry_run:
+    if os.path.exists(marker) and not args.dry_run and not args.sync_target:
         log(f"כבר בוצעו פקודות בתאריך {args.date} (קיים marker) — יציאה.")
         return
 
