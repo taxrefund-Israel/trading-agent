@@ -221,8 +221,15 @@ def main():
     for o in orders:
         emoji = "🟢" if o["side"] == "BUY" else "🔴"
         L.append(f'{emoji} {o["side"]} <b>{o["sym"]}</b> — {o["qty"]} יח׳ '
-                 f'@ ~${o["price"]:,.2f} (מחיר החלטה)')
-    L += ["", f'פקודות Limit עם מרווח {cfg["limit_buffer_pct"]}%, '
+                 f'@ ~${o["price"]:,.2f} = <b>${o["qty"] * o["price"]:,.0f}</b>')
+    total_buy = sum(o["qty"] * o["price"] for o in orders if o["side"] == "BUY")
+    total_sell = sum(o["qty"] * o["price"] for o in orders if o["side"] == "SELL")
+    L.append("")
+    if total_buy:
+        L.append(f'סה"כ רכישות בסבב: <b>${total_buy:,.0f}</b>')
+    if total_sell:
+        L.append(f'סה"כ מימושים בסבב: <b>${total_sell:,.0f}</b>')
+    L += [f'פקודות Limit עם מרווח {cfg["limit_buffer_pct"]}%, '
               f'ביטול אוטומטי אם סטייה מעל {cfg["max_price_dev_pct"]}%.',
           f'תוקף האישור: {cfg["approval_timeout_min"]} דקות.']
     kb = {"inline_keyboard": [[

@@ -278,16 +278,22 @@ def build_message(r: dict) -> str:
     L.append("")
 
     if r["sells"]:
+        total_sell = sum(t["qty"] * t["price"] for t in r["sells"])
         L.append(f'🔴 <b>מכירות ({len(r["sells"])})</b>')
         for t in r["sells"]:
             L.append(f'• <b>{t["sym"]}</b>: {t["qty"]} יח׳ @ ${t["price"]:,.2f} '
+                     f'= <b>${t["qty"] * t["price"]:,.0f}</b> '
                      f'| {t["pnl_pct"]:+.1f}% | {t["reason"]}')
+        L.append(f'סה"כ מימושים: <b>${total_sell:,.0f}</b>')
         L.append("")
     if r["buys"]:
+        total_buy = sum(t["qty"] * t["price"] for t in r["buys"])
         L.append(f'🟢 <b>קניות ({len(r["buys"])})</b>')
         for t in r["buys"]:
             L.append(f'• <b>{t["sym"]}</b> (דירוג #{t.get("rank", "?")}): '
-                     f'{t["qty"]} יח׳ @ ${t["price"]:,.2f}')
+                     f'{t["qty"]} יח׳ @ ${t["price"]:,.2f} '
+                     f'= <b>${t["qty"] * t["price"]:,.0f}</b>')
+        L.append(f'סה"כ רכישות: <b>${total_buy:,.0f}</b>')
         L.append("")
     if not r["sells"] and not r["buys"]:
         L.append("✋ אין קניות/מכירות. ממשיכים להחזיק.")
