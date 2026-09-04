@@ -295,6 +295,9 @@ def main():
             pull()
         else:
             log(f"לא הגיע איתות תוך {args.wait_signal} דק' — יציאה.")
+            tg_send(token, chat,
+                    f'⚠️ <b>Executor</b> — האיתות של {args.date} לא הגיע מהענן '
+                    f'תוך {args.wait_signal} דקות. בדוק את ריצת GitHub Actions.')
             return
 
     # 2. חיבור ל-IB ובדיקת חשבון
@@ -320,6 +323,9 @@ def main():
         orders = todays_orders(args.date)
         if not orders:
             log(f"אין עסקאות בתאריך {args.date} — אין מה לבצע.")
+            tg_send(token, chat,
+                    f'✋ <b>Executor — {args.date}</b>\n'
+                    f'אין פקודות לביצוע השבוע. התיק ב-IBKR נשאר ללא שינוי.')
             if ib:
                 ib.disconnect()
             return
