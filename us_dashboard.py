@@ -218,6 +218,45 @@ def render_us_section(mobile: bool = False):
             st.line_chart(hi.set_index("date")["equity"], height=200)
         st.caption("הנתונים נקראים ישירות מחשבון IBKR (מתעדכן בהרצת us_ibkr_sync).")
 
+        # ── השוואה: תיק הסוכן מול הביצוע בפועל ────────────────────────────────
+        st.subheader("🔀 תיק הסוכן מול ביצוע בפועל")
+        agent_val = state["history"][-1]["value"] if state.get("history") else None
+        if agent_val and snap.get("equity") and state.get("positions"):
+            scale = snap["equity"] / agent_val
+            agent_cum = (agent_val / (inc.get("value") or agent_val) - 1) * 100
+            gap_ret = cum_ib - agent_cum
+            g1, g2, g3 = st.columns(3)
+            g1.metric("תשואת תיק הסוכן", f"{agent_cum:+.2f}%")
+            g2.metric("תשואת IBKR בפועל", f"{cum_ib:+.2f}%")
+            g3.metric("פער ביצוע", f"{gap_ret:+.2f}%",
+                      help="שלילי = הביצוע בפועל מפגר אחרי התיאוריה (slippage, מילויים חלקיים, עמלות)")
+
+            ib_qty = {p["sym"]: p["qty"] for p in snap.get("positions", [])}
+            rows, worst = [], 0.0
+            for sym, h in state["positions"].items():
+                target = h["qty"] * scale
+                actual = ib_qty.get(sym, 0)
+                dev = (actual / target - 1) * 100 if target else 0.0
+                worst = max(worst, abs(dev))
+                status = "✅" if abs(dev) <= 7 else "⚠️ פער"
+                rows.append({"מניה": sym, "יעד (סוכן ×מקדם)": f"{target:,.0f}",
+                             "בפועל ב-IBKR": f"{actual:,.0f}",
+                             "סטייה": f"{dev:+.1f}%", "סטטוס": status})
+            for sym in ib_qty:
+                if sym not in state["positions"]:
+                    rows.append({"מניה": sym, "יעד (סוכן ×מקדם)": "0",
+                                 "בפועל ב-IBKR": f"{ib_qty[sym]:,.0f}",
+                                 "סטייה": "—", "סטטוס": "⚠️ עודף"})
+            st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True)
+            n_issues = sum(1 for r in rows if "⚠️" in r["סטטוס"])
+            if n_issues:
+                st.warning(f"{n_issues} פוזיציות חורגות מהיעד — הרץ יישור: "
+                           f"us_executor.py --sync-target")
+            else:
+                st.success(f"כל הפוזיציות בתחום הסבילות (עד 7%) · מקדם הון x{scale:.2f}")
+        else:
+            st.info("ההשוואה תוצג כשיש גם תיק סוכן וגם snapshot מ-IBKR.")
+
     # ── יומן עסקאות ────────────────────────────────────────────────────────────
     st.divider()
     st.subheader("📜 יומן עסקאות")
