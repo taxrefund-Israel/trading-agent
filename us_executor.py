@@ -259,6 +259,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--sync-target", action="store_true",
                     help="יישור מלא של חשבון IBKR לתיק הסוכן, מוקנה להון בחשבון")
+    ap.add_argument("--wait-signal", type=int, default=0, metavar="MIN",
+                    help="המתן עד N דקות לאיתות הענן של היום (משיכת git חוזרת)")
     args = ap.parse_args()
 
     def log(m):
@@ -267,11 +269,33 @@ def main():
     cfg = load_cfg()
     token, chat = tg_creds()
 
-    # 1. סנכרון עם החלטות הענן
-    try:
-        subprocess.run(["git", "pull", "--quiet"], cwd=BASE, timeout=60)
-    except Exception as e:
-        log(f"אזהרה: git pull נכשל ({e}) — ממשיך עם הסטייט המקומי")
+    # מנעול כפילות: אם כבר בוצעו פקודות היום — לא רצים שוב
+    marker = os.path.join(BASE, "logs_us", f"executed_{args.date}.marker")
+    if os.path.exists(marker) and not args.dry_run:
+        log(f"כבר בוצעו פקודות בתאריך {args.date} (קיים marker) — יציאה.")
+        return
+
+    # 1. סנכרון עם החלטות הענן (+ המתנה לאיתות אם התבקשה)
+    def pull():
+        try:
+            subprocess.run(["git", "pull", "--quiet"], cwd=BASE, timeout=60)
+        except Exception as e:
+            log(f"אזהרה: git pull נכשל ({e}) — ממשיך עם הסטייט המקומי")
+
+    pull()
+    if args.wait_signal > 0:
+        deadline = time.time() + args.wait_signal * 60
+        while time.time() < deadline:
+            state, _ = load_agent_state()
+            if any(h["date"] == args.date for h in state.get("history", [])):
+                log("איתות היום התקבל בריפו — ממשיך.")
+                break
+            log("אין עדיין איתות להיום — ממתין 2 דקות...")
+            time.sleep(120)
+            pull()
+        else:
+            log(f"לא הגיע איתות תוך {args.wait_signal} דק' — יציאה.")
+            return
 
     # 2. חיבור ל-IB ובדיקת חשבון
     if args.dry_run:
@@ -353,6 +377,9 @@ def main():
                      f'x{o["qty"]} limit ${lmt} — {st}')
     R.append("\nבדוק ב-TWS שהפקודות מולאו. פקודות DAY שלא ימולאו יפוגו בסוף היום.")
     tg_send(token, chat, "\n".join(R))
+    os.makedirs(os.path.dirname(marker), exist_ok=True)
+    with open(marker, "w") as f:
+        f.write(datetime.now().isoformat())
     ib.disconnect()
     log("סיום.")
 
