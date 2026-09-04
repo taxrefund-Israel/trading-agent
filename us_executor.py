@@ -130,7 +130,16 @@ def todays_orders(date_str) -> list[dict]:
 def connect_ib(cfg):
     from ib_async import IB
     ib = IB()
-    ib.connect(cfg["host"], cfg["port"], clientId=cfg["client_id"], timeout=15)
+    ports = [cfg["port"]] + [p for p in (4002, 7497) if p != cfg["port"]]
+    last_err = None
+    for port in ports:
+        try:
+            ib.connect(cfg["host"], port, clientId=cfg["client_id"], timeout=15)
+            break
+        except Exception as e:
+            last_err = e
+    else:
+        raise RuntimeError(f"אין חיבור ל-IB באף פורט {ports}: {last_err}")
     accounts = ib.managedAccounts()
     is_paper = all(a.startswith(("DU", "DF")) for a in accounts)
     if not is_paper and not cfg.get("allow_live"):
