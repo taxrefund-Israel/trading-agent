@@ -1,0 +1,9 @@
+{
+  "host": "127.0.0.1",
+  "port": 7497,
+  "client_id": 21,
+  "allow_live": false,
+  "max_price_dev_pct": 3.0,
+  "limit_buffer_pct": 0.3,
+  "approval_timeout_min": 30
+}
