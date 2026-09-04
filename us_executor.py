@@ -331,6 +331,12 @@ def main():
             tg_send(token, chat, "✅ חשבון IBKR כבר מיושר לתיק הסוכן — אין פקודות.")
             log("מיושר — אין מה לבצע.")
             ib.disconnect()
+            # רענון snapshot גם כשאין פקודות — כדי שבדיקת הענן תראה מצב עדכני
+            try:
+                subprocess.run([sys.executable, os.path.join(BASE, "us_ibkr_sync.py")],
+                               cwd=BASE, timeout=180)
+            except Exception as e:
+                log(f"אזהרה: רענון snapshot נכשל ({e})")
             return
     else:
         orders = todays_orders(args.date)
