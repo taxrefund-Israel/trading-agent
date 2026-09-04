@@ -387,6 +387,12 @@ def main():
     with open(marker, "w") as f:
         f.write(datetime.now().isoformat())
     ib.disconnect()
+    # דחיפת snapshot טרי לריפו — כדי שהמוודא בענן יראה את הביצוע
+    try:
+        subprocess.run([sys.executable, os.path.join(BASE, "us_ibkr_sync.py")],
+                       cwd=BASE, timeout=180)
+    except Exception as e:
+        log(f"אזהרה: סנכרון snapshot אחרי ביצוע נכשל ({e})")
     log("סיום.")
 
 

@@ -1,0 +1,34 @@
+name: Monday US Chain Verification
+
+# בדיקת תקינות שבועית של שרשרת המסחר האמריקאית — רצה בענן, לא תלויה במחשב.
+# 14:37 UTC = ‏17:37 שעון ישראל — אחרי האיתות (15:07), חלון האישור והביצוע.
+# שולחת סיכום לטלגרם תמיד; exit 1 (ריצה אדומה ב-Actions) כשנמצאו בעיות.
+
+on:
+  schedule:
+    - cron: "37 14 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: us-monday-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Jerusalem
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify chain + send Telegram summary
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:    ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python us_verify_cloud.py
