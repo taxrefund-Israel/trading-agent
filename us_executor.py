@@ -120,10 +120,70 @@ def wait_for_approval(token, chat, run_id, timeout_min) -> bool:
 
 
 # ─── החלטות לביצוע ───────────────────────────────────────────────────────────
-def todays_orders(date_str) -> list[dict]:
+def load_agent_state():
     with open(STATE_FILE, encoding="utf-8") as f:
         state = json.load(f)
+    agent_val = state["history"][-1]["value"] if state.get("history") else 100_000.0
+    return state, agent_val
+
+
+def todays_orders(date_str) -> list[dict]:
+    state, _ = load_agent_state()
     return [t for t in state["trades"] if t["date"] == date_str]
+
+
+def ib_symbol(sym: str) -> str:
+    return sym.replace("-", " ")   # BRK-B -> BRK B
+
+
+def build_target_orders(ib, cfg, log) -> tuple[list[dict], float, float]:
+    """מצב sync-target: משווה את פוזיציות IBKR לתיק הסוכן, מוקטן/מוגדל
+    לפי ההון בחשבון (NetLiquidation), ומחזיר פקודות דלתא."""
+    from ib_async import Stock
+    from backtest_us_v1 import UNIVERSE
+
+    state, agent_val = load_agent_state()
+    netliq = None
+    for v in ib.accountValues():
+        if v.tag == "NetLiquidation" and v.currency == "USD":
+            netliq = float(v.value)
+    if not netliq or netliq <= 0:
+        raise RuntimeError("לא הצלחתי לקרוא NetLiquidation מהחשבון")
+    scale = netliq / agent_val
+    log(f"הון בחשבון: ${netliq:,.0f} | תיק הסוכן: ${agent_val:,.0f} | מקדם: x{scale:.2f}")
+
+    ib_pos = {}
+    for p in ib.positions():
+        ib_pos[p.contract.symbol] = ib_pos.get(p.contract.symbol, 0) + int(p.position)
+
+    universe_ib = {ib_symbol(s): s for s in UNIVERSE}
+    orders = []
+    # יעדים לפי החזקות הסוכן
+    for sym, h in state["positions"].items():
+        target = int(h["qty"] * scale)
+        cur = ib_pos.get(ib_symbol(sym), 0)
+        delta = target - cur
+        if delta == 0:
+            continue
+        c = Stock(ib_symbol(sym), "SMART", "USD")
+        ib.qualifyContracts(c)
+        price = live_price(ib, c)
+        if not price:
+            log(f"  {sym}: אין מחיר — מדולג")
+            continue
+        orders.append({"side": "BUY" if delta > 0 else "SELL",
+                       "sym": sym, "qty": abs(delta), "price": price})
+    # ניירות מהיקום שקיימים ב-IB אך לא בתיק הסוכן — למכור
+    agent_ib_syms = {ib_symbol(s) for s in state["positions"]}
+    for ibsym, qty in ib_pos.items():
+        if ibsym in universe_ib and ibsym not in agent_ib_syms and qty > 0:
+            c = Stock(ibsym, "SMART", "USD")
+            ib.qualifyContracts(c)
+            price = live_price(ib, c)
+            if price:
+                orders.append({"side": "SELL", "sym": universe_ib[ibsym],
+                               "qty": qty, "price": price})
+    return orders, netliq, scale
 
 
 # ─── IB ──────────────────────────────────────────────────────────────────────
@@ -197,6 +257,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", default=datetime.now().strftime("%Y-%m-%d"))
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--sync-target", action="store_true",
+                    help="יישור מלא של חשבון IBKR לתיק הסוכן, מוקנה להון בחשבון")
     args = ap.parse_args()
 
     def log(m):
@@ -211,11 +273,6 @@ def main():
     except Exception as e:
         log(f"אזהרה: git pull נכשל ({e}) — ממשיך עם הסטייט המקומי")
 
-    orders = todays_orders(args.date)
-    if not orders:
-        log(f"אין עסקאות בתאריך {args.date} — אין מה לבצע.")
-        return
-
     # 2. חיבור ל-IB ובדיקת חשבון
     if args.dry_run:
         ib, accounts, is_paper = None, ["DRY-RUN"], True
@@ -223,10 +280,33 @@ def main():
         ib, accounts, is_paper = connect_ib(cfg)
         log(f"מחובר ל-IB: {accounts} ({'דמו' if is_paper else 'אמיתי!'})")
 
-    # 3. בקשת אישור בטלגרם
-    run_id = args.date.replace("-", "")
+    # 3. בניית הפקודות
+    sync_note = ""
+    if args.sync_target:
+        if ib is None:
+            raise RuntimeError("--sync-target דורש חיבור אמיתי ל-IB (לא dry-run)")
+        orders, netliq, scale = build_target_orders(ib, cfg, log)
+        sync_note = f'יישור תיק להון בחשבון: ${netliq:,.0f} (מקדם x{scale:.2f})'
+        if not orders:
+            tg_send(token, chat, "✅ חשבון IBKR כבר מיושר לתיק הסוכן — אין פקודות.")
+            log("מיושר — אין מה לבצע.")
+            ib.disconnect()
+            return
+    else:
+        orders = todays_orders(args.date)
+        if not orders:
+            log(f"אין עסקאות בתאריך {args.date} — אין מה לבצע.")
+            if ib:
+                ib.disconnect()
+            return
+
+    # 4. בקשת אישור בטלגרם
+    run_id = args.date.replace("-", "") + ("s" if args.sync_target else "")
     acct_tag = "🧪 חשבון דמו" if is_paper else "⚠️ חשבון אמיתי"
-    L = [f'🔐 <b>אישור ביצוע ב-IBKR — {args.date}</b>', acct_tag, ""]
+    L = [f'🔐 <b>אישור ביצוע ב-IBKR — {args.date}</b>', acct_tag]
+    if sync_note:
+        L.append(sync_note)
+    L.append("")
     for o in orders:
         emoji = "🟢" if o["side"] == "BUY" else "🔴"
         L.append(f'{emoji} {o["side"]} <b>{o["sym"]}</b> — {o["qty"]} יח׳ '

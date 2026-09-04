@@ -193,6 +193,31 @@ def render_us_section(mobile: bool = False):
         with col_l: _equity_and_portfolio()
         with col_r: _momentum()
 
+    # ── IBKR בפועל ─────────────────────────────────────────────────────────────
+    snap_path = os.path.join(BASE, "ibkr_snapshot.json")
+    if os.path.exists(snap_path):
+        with open(snap_path, encoding="utf-8") as f:
+            snap = json.load(f)
+        st.divider()
+        acct_tag = "🧪 דמו" if snap.get("is_paper") else "💵 אמיתי"
+        st.subheader(f'🏦 חשבון IBKR בפועל ({acct_tag} {snap.get("account", "")})')
+        inc_eq = (snap.get("inception") or {}).get("equity") or snap["equity"]
+        cum_ib = (snap["equity"] / inc_eq - 1) * 100 if inc_eq else 0.0
+        i1, i2, i3 = st.columns(3)
+        i1.metric("שווי חשבון", f'${snap["equity"]:,.0f}', f"{cum_ib:+.2f}%")
+        i2.metric("מזומן", f'${snap.get("cash") or 0:,.0f}')
+        i3.metric("עדכון אחרון", snap.get("updated", "—"))
+        if snap.get("positions"):
+            dfi = pd.DataFrame(snap["positions"]).rename(columns={
+                "sym": "מניה", "qty": "כמות", "avg_cost": "עלות ממוצעת",
+                "price": "מחיר", "value": "שווי $", "pnl": 'רו"ה $', "pnl_pct": 'רו"ה %'})
+            st.dataframe(dfi, width='stretch', hide_index=True)
+        if len(snap.get("history", [])) >= 2:
+            hi = pd.DataFrame(snap["history"])
+            hi["date"] = pd.to_datetime(hi["date"])
+            st.line_chart(hi.set_index("date")["equity"], height=200)
+        st.caption("הנתונים נקראים ישירות מחשבון IBKR (מתעדכן בהרצת us_ibkr_sync).")
+
     # ── יומן עסקאות ────────────────────────────────────────────────────────────
     st.divider()
     st.subheader("📜 יומן עסקאות")
