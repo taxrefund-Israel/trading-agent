@@ -63,14 +63,17 @@ def main():
         with open(SNAP, encoding="utf-8") as f:
             snap = json.load(f)
 
-    # 1. איתות היום
+    # 1. איתות היום (נדרש רק בימי שני — יום האיתות)
     signal_ran = bool(state and any(h["date"] == today for h in state.get("history", [])))
     if signal_ran:
         row = next(h for h in state["history"] if h["date"] == today)
         infos.append(f'איתות הענן רץ ✓ (משטר {"שורי" if row.get("bull") else "דובי"}, '
                      f'אירוע: {row.get("event", "?")})')
-    else:
+    elif datetime.now().weekday() == 0:
         issues.append("איתות הענן של היום לא נמצא בריפו — בדוק את us-weekly-signals ב-Actions")
+    else:
+        last = state["history"][-1]["date"] if state and state.get("history") else "—"
+        infos.append(f"לא יום איתות (האיתות רץ בימי שני); איתות אחרון: {last}")
 
     # 2. עסקאות היום + טריות ה-snapshot
     trades_today = [t for t in (state or {}).get("trades", []) if t["date"] == today]
