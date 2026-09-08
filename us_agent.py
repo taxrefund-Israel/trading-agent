@@ -269,31 +269,54 @@ def build_message(r: dict) -> str:
         broke = " וגם ".join(n for n, b in (("SPX", rg["spx_bull"]), ("NDX", rg["ndx_bull"])) if not b)
         regime_he = f"דובי 🐻 — {broke} מתחת ל-SMA200 ({detail})"
 
+    # נתוני חשבון ה-IBKR — מקור האמת של המדידה; תיק הנייר הוא מנוע פנימי בלבד.
+    # הכמויות והסכומים בהודעה מוצגים בקנה המידה של החשבון (מקדם k).
+    snap = None
+    try:
+        with open(os.path.join(BASE, "ibkr_snapshot.json"), encoding="utf-8") as f:
+            snap = json.load(f)
+    except Exception:
+        pass
+    k = 1.0
+    ib_cum = None
+    if snap and snap.get("equity") and r["pv"]:
+        k = snap["equity"] / r["pv"]
+        inc_eq = (snap.get("inception") or {}).get("equity")
+        if inc_eq:
+            ib_cum = (snap["equity"] / inc_eq - 1) * 100
+
     L = []
     L.append(f'🇺🇸 <b>מומנטום ארה"ב — {r["today"]}</b>')
     L.append(f'מצב שוק: {regime_he}')
     L.append(f'{event_he[r["event"]]}')
-    L.append(f'שווי תיק: ${r["pv"]:,.0f} | מצטבר: {r["cum_pct"]:+.2f}% '
-             f'(SPX {r["spx_pct"]:+.2f}% | נאסד"ק100 {r["ndx_pct"]:+.2f}% | דאו {r["dji_pct"]:+.2f}%)')
+    if snap and ib_cum is not None:
+        L.append(f'שווי חשבון IBKR: ${snap["equity"]:,.0f} | מצטבר: {ib_cum:+.2f}% '
+                 f'(SPX {r["spx_pct"]:+.2f}% | נאסד"ק100 {r["ndx_pct"]:+.2f}% | דאו {r["dji_pct"]:+.2f}%)')
+    else:
+        L.append(f'שווי תיק (נייר): ${r["pv"]:,.0f} | מצטבר: {r["cum_pct"]:+.2f}% '
+                 f'(SPX {r["spx_pct"]:+.2f}% | נאסד"ק100 {r["ndx_pct"]:+.2f}% | דאו {r["dji_pct"]:+.2f}%)')
     L.append("")
 
+    def _q(t):
+        return int(round(t["qty"] * k))
+
     if r["sells"]:
-        total_sell = sum(t["qty"] * t["price"] for t in r["sells"])
+        total_sell = sum(_q(t) * t["price"] for t in r["sells"])
         L.append(f'🔴 <b>מכירות ({len(r["sells"])})</b>')
         for t in r["sells"]:
-            L.append(f'• <b>{t["sym"]}</b>: {t["qty"]} יח׳ @ ${t["price"]:,.2f} '
-                     f'= <b>${t["qty"] * t["price"]:,.0f}</b> '
+            L.append(f'• <b>{t["sym"]}</b>: ~{_q(t)} יח׳ @ ${t["price"]:,.2f} '
+                     f'= <b>${_q(t) * t["price"]:,.0f}</b> '
                      f'| {t["pnl_pct"]:+.1f}% | {t["reason"]}')
-        L.append(f'סה"כ מימושים: <b>${total_sell:,.0f}</b>')
+        L.append(f'סה"כ מימושים: <b>~${total_sell:,.0f}</b>')
         L.append("")
     if r["buys"]:
-        total_buy = sum(t["qty"] * t["price"] for t in r["buys"])
+        total_buy = sum(_q(t) * t["price"] for t in r["buys"])
         L.append(f'🟢 <b>קניות ({len(r["buys"])})</b>')
         for t in r["buys"]:
             L.append(f'• <b>{t["sym"]}</b> (דירוג #{t.get("rank", "?")}): '
-                     f'{t["qty"]} יח׳ @ ${t["price"]:,.2f} '
-                     f'= <b>${t["qty"] * t["price"]:,.0f}</b>')
-        L.append(f'סה"כ רכישות: <b>${total_buy:,.0f}</b>')
+                     f'~{_q(t)} יח׳ @ ${t["price"]:,.2f} '
+                     f'= <b>${_q(t) * t["price"]:,.0f}</b>')
+        L.append(f'סה"כ רכישות: <b>~${total_buy:,.0f}</b>')
         L.append("")
     if not r["sells"] and not r["buys"]:
         L.append("✋ אין קניות/מכירות. ממשיכים להחזיק.")
@@ -306,11 +329,13 @@ def build_message(r: dict) -> str:
             p = r["prices"].get(s)
             if pd.isna(p):
                 continue
-            mv = h["qty"] * float(p)
+            mv = h["qty"] * float(p) * k
             pnl = (float(p) / (h["cost"] / h["qty"]) - 1) * 100
             rk = r["rank_of"].get(s, "—")
             L.append(f'• {s}: ${mv:,.0f} | {pnl:+.1f}% | דירוג #{rk}')
-    L.append(f'💵 מזומן/כספית: ${r["cash"]:,.0f}')
+    cash_disp = (snap.get("cash") if snap and snap.get("cash") is not None
+                 else r["cash"] * k)
+    L.append(f'💵 מזומן/כספית: ${cash_disp:,.0f}')
     # המלצת קרן כספית ספציפית — ביציאה דובית או כשיש מזומן משמעותי בצד
     if r["event"] == "bear_exit" or r["cash"] > r["pv"] * 0.10:
         L.append(f'🏦 לחניית המזומן: {MMF_REC}')
@@ -327,7 +352,8 @@ def build_message(r: dict) -> str:
     if url:
         L.append(f'📊 <a href="{url}">צפייה בדשבורד (ישראל + ארה"ב)</a>')
         L.append("")
-    L.append("<i>תיק נייר. אינה ייעוץ השקעות — הביצוע באחריותך.</i>")
+    tag = "המדידה על חשבון IBKR" if snap else "תיק נייר"
+    L.append(f'<i>{tag}. אינה ייעוץ השקעות — הביצוע באחריותך.</i>')
     return "\n".join(L)
 
 

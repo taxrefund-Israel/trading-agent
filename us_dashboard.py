@@ -6,7 +6,9 @@
   1. עצמאי:   streamlit run us_dashboard.py --server.port 8502
   2. משובץ:   from us_dashboard import render_us_section
              render_us_section(mobile=...)   ← מוצג מתחת לדשבורד הישראלי
-מציג: מצב משטר, התיק הנוכחי, דירוג מומנטום מלא, עקומת הון מול המדדים, יומן עסקאות.
+מציג את חשבון ה-IBKR (דמו/אמיתי) כתצוגה הראשית: משטר, שווי ופוזיציות בפועל,
+עקומת הון מול המדדים, דירוג מומנטום, יישום ההחלטות ויומן החלטות.
+תיק הנייר של הסוכן משמש רק כמנוע החלטות פנימי ואינו מוצג כ"תיק".
 """
 from __future__ import annotations
 
@@ -107,29 +109,47 @@ def render_us_section(mobile: bool = False):
     mom = (px[stocks].iloc[-21] / px[stocks].iloc[-252] - 1).dropna().sort_values(ascending=False)
     rank_of = {s: i + 1 for i, s in enumerate(mom.index)}
 
+    # תיק הנייר של הסוכן — מנוע החלטות פנימי בלבד (נדרש למקדם ההון ולסטטוסים)
     held_val = sum(h["qty"] * float(prices[s]) for s, h in state["positions"].items()
                    if s in prices and pd.notna(prices[s]))
     pv = state["cash"] + held_val
     inc = state["inception"] or {"value": pv, "spx": spx_c, "dji": float(px["^DJI"].dropna().iloc[-1])}
-    cum = (pv / inc["value"] - 1) * 100
     spx_cum = (spx_c / inc["spx"] - 1) * 100
     dji_cum = (float(px["^DJI"].dropna().iloc[-1]) / inc["dji"] - 1) * 100
     ndx_cum = (ndx_c / inc.get("ndx", ndx_c) - 1) * 100
+
+    # ── חשבון IBKR — מקור האמת של המדידה ─────────────────────────────────────
+    snap = None
+    snap_path = os.path.join(BASE, "ibkr_snapshot.json")
+    if os.path.exists(snap_path):
+        with open(snap_path, encoding="utf-8") as f:
+            snap = json.load(f)
+    inc_eq = ((snap or {}).get("inception") or {}).get("equity") or (snap or {}).get("equity")
+    cum_ib = (snap["equity"] / inc_eq - 1) * 100 if snap and inc_eq else 0.0
 
     # ── משטר + מדדים ──────────────────────────────────────────────────────────
     cls = "us-regime-bull" if bull else "us-regime-bear"
     detail = f"SPX ‏{spx_dist:+.1f}% · NDX ‏{ndx_dist:+.1f}% מול SMA200"
     txt = f"🐂 שוק שורי — {detail}" if bull else f"🐻 שוק דובי — {detail}"
     st.markdown(f'<div class="{cls}">{txt}</div>', unsafe_allow_html=True)
-    st.caption("משטר היברידי (SPX+NDX) שבועי · ריבאלנס מומנטום חודשי · Top6, buffer 14, מקס' מניה לסקטור")
+    acct_tag = ""
+    if snap:
+        acct_tag = f' · חשבון {"דמו 🧪" if snap.get("is_paper") else "אמיתי 💵"} {snap.get("account", "")}'
+    st.caption("משטר היברידי (SPX+NDX) שבועי · ריבאלנס מומנטום חודשי · "
+               f"Top6, buffer 14, מקס' מניה לסקטור{acct_tag}")
 
-    metrics = [
-        ("שווי התיק", f"${pv:,.0f}", f"{cum:+.2f}%"),
-        ("אלפא מול S&P", f"{cum - spx_cum:+.2f}%", None),
-        ("S&P 500 מההתחלה", f"{spx_cum:+.2f}%", None),
-        ('נאסד"ק 100 מההתחלה', f"{ndx_cum:+.2f}%", None),
-        ("דאו ג'ונס מההתחלה", f"{dji_cum:+.2f}%", None),
-    ]
+    if snap:
+        metrics = [
+            ("שווי חשבון IBKR", f'${snap["equity"]:,.0f}', f"{cum_ib:+.2f}%"),
+            ("אלפא מול S&P", f"{cum_ib - spx_cum:+.2f}%", None),
+            ("S&P 500 מההתחלה", f"{spx_cum:+.2f}%", None),
+            ('נאסד"ק 100 מההתחלה', f"{ndx_cum:+.2f}%", None),
+            ("דאו ג'ונס מההתחלה", f"{dji_cum:+.2f}%", None),
+        ]
+    else:
+        metrics = [("חשבון IBKR", "אין נתונים", None),
+                   ("S&P 500 מההתחלה", f"{spx_cum:+.2f}%", None)]
+        st.warning("אין עדיין snapshot מ-IBKR — הרץ את us_ibkr_sync.py עם Gateway פתוח.")
     cols = st.columns(2 if mobile else 5)
     for i, (label, val, delta) in enumerate(metrics):
         cols[i % len(cols)].metric(label, val, delta)
@@ -137,40 +157,42 @@ def render_us_section(mobile: bool = False):
     st.divider()
 
     def _equity_and_portfolio():
-        st.subheader("📈 התיק מול המדדים")
-        hist = pd.DataFrame(state["history"])
-        if len(hist) >= 2:
-            hist["date"] = pd.to_datetime(hist["date"]); hist = hist.set_index("date")
-            series = {
-                "התיק":    hist["value"] / inc["value"] * 100 - 100,
-                "S&P 500": hist["spx"] / inc["spx"] * 100 - 100,
-                "דאו ג'ונס": hist["dji"] / inc["dji"] * 100 - 100,
-            }
-            if "ndx" in hist.columns and "ndx" in inc:
-                series['נאסד"ק 100'] = hist["ndx"] / inc["ndx"] * 100 - 100
+        st.subheader("📈 החשבון מול המדדים")
+        if snap and len(snap.get("history", [])) >= 2 and inc_eq:
+            hi = pd.DataFrame(snap["history"])
+            hi["date"] = pd.to_datetime(hi["date"])
+            hi = hi.set_index("date").sort_index()
+            series = {"חשבון IBKR": hi["equity"] / inc_eq * 100 - 100}
+            for label, tk, base in (("S&P 500", "^GSPC", inc.get("spx")),
+                                    ('נאסד"ק 100', "^NDX", inc.get("ndx")),
+                                    ("דאו ג'ונס", "^DJI", inc.get("dji"))):
+                if base:
+                    b = px[tk].reindex(hi.index, method="ffill")
+                    series[label] = b / base * 100 - 100
             st.line_chart(pd.DataFrame(series), height=340)
         else:
-            st.info("עקומת ההון תופיע אחרי כמה ריצות שבועיות.")
+            st.info("עקומת ההון תופיע אחרי כמה סנכרונים יומיים מ-IBKR.")
 
-        st.subheader("🎯 התיק הנוכחי")
-        if state["positions"]:
+        st.subheader("🎯 ההחזקות בחשבון")
+        if snap and snap.get("positions"):
+            from backtest_us_v6_next import SECTOR
             rows = []
-            for s, h in state["positions"].items():
-                p = float(prices[s]) if s in prices and pd.notna(prices[s]) else None
-                avg = h["cost"] / h["qty"]
+            for p_ in snap["positions"]:
                 rows.append({
-                    "מניה": s, "דירוג": rank_of.get(s, "—"), "כמות": h["qty"],
-                    "מחיר קנייה": round(avg, 2), "מחיר נוכחי": round(p, 2) if p else "—",
-                    "שווי $": round(h["qty"] * p, 0) if p else "—",
-                    "רווח %": round((p / avg - 1) * 100, 1) if p else "—",
-                    "נקנתה": h.get("buy_date", "—"),
+                    "מניה": p_["sym"], "דירוג": rank_of.get(p_["sym"], "—"),
+                    "סקטור": SECTOR.get(p_["sym"], "—"), "כמות": p_["qty"],
+                    "עלות ממוצעת": p_.get("avg_cost", "—"),
+                    "מחיר": p_.get("price", "—"), "שווי $": p_.get("value", "—"),
+                    'רו"ה %': p_.get("pnl_pct", "—"),
                 })
             st.dataframe(pd.DataFrame(rows).sort_values("דירוג"),
                          width='stretch', hide_index=True)
-            st.caption(f'💵 מזומן/קרן כספית: ${state["cash"]:,.0f} · '
-                       f'מס ששולם מצטבר: ${state.get("tax_paid", 0):,.0f}')
+            st.caption(f'💵 מזומן בחשבון: ${(snap.get("cash") or 0):,.0f} · '
+                       f'עדכון אחרון: {snap.get("updated", "—")}')
+        elif snap:
+            st.info("אין פוזיציות בחשבון — כנראה קרן כספית (שוק דובי).")
         else:
-            st.info("אין פוזיציות — התיק בקרן כספית (שוק דובי) או טרם אותחל.")
+            st.info("ההחזקות יוצגו אחרי הסנכרון הראשון מ-IBKR.")
 
     def _momentum():
         st.subheader("🏁 דירוג מומנטום 12-1")
@@ -193,43 +215,14 @@ def render_us_section(mobile: bool = False):
         with col_l: _equity_and_portfolio()
         with col_r: _momentum()
 
-    # ── IBKR בפועל ─────────────────────────────────────────────────────────────
-    snap_path = os.path.join(BASE, "ibkr_snapshot.json")
-    if os.path.exists(snap_path):
-        with open(snap_path, encoding="utf-8") as f:
-            snap = json.load(f)
+    # ── יישום החלטות האסטרטגיה בחשבון ─────────────────────────────────────────
+    if snap:
         st.divider()
-        acct_tag = "🧪 דמו" if snap.get("is_paper") else "💵 אמיתי"
-        st.subheader(f'🏦 חשבון IBKR בפועל ({acct_tag} {snap.get("account", "")})')
-        inc_eq = (snap.get("inception") or {}).get("equity") or snap["equity"]
-        cum_ib = (snap["equity"] / inc_eq - 1) * 100 if inc_eq else 0.0
-        i1, i2, i3 = st.columns(3)
-        i1.metric("שווי חשבון", f'${snap["equity"]:,.0f}', f"{cum_ib:+.2f}%")
-        i2.metric("מזומן", f'${snap.get("cash") or 0:,.0f}')
-        i3.metric("עדכון אחרון", snap.get("updated", "—"))
-        if snap.get("positions"):
-            dfi = pd.DataFrame(snap["positions"]).rename(columns={
-                "sym": "מניה", "qty": "כמות", "avg_cost": "עלות ממוצעת",
-                "price": "מחיר", "value": "שווי $", "pnl": 'רו"ה $', "pnl_pct": 'רו"ה %'})
-            st.dataframe(dfi, width='stretch', hide_index=True)
-        if len(snap.get("history", [])) >= 2:
-            hi = pd.DataFrame(snap["history"])
-            hi["date"] = pd.to_datetime(hi["date"])
-            st.line_chart(hi.set_index("date")["equity"], height=200)
-        st.caption("הנתונים נקראים ישירות מחשבון IBKR (מתעדכן בהרצת us_ibkr_sync).")
-
-        # ── השוואה: תיק הסוכן מול הביצוע בפועל ────────────────────────────────
-        st.subheader("🔀 תיק הסוכן מול ביצוע בפועל")
+        st.subheader("🔀 יישום החלטות האסטרטגיה בחשבון")
+        st.caption("השוואה בין הרכב היעד שהאסטרטגיה קבעה לבין הפוזיציות בפועל ב-IBKR")
         agent_val = state["history"][-1]["value"] if state.get("history") else None
         if agent_val and snap.get("equity") and state.get("positions"):
             scale = snap["equity"] / agent_val
-            agent_cum = (agent_val / (inc.get("value") or agent_val) - 1) * 100
-            gap_ret = cum_ib - agent_cum
-            g1, g2, g3 = st.columns(3)
-            g1.metric("תשואת תיק הסוכן", f"{agent_cum:+.2f}%")
-            g2.metric("תשואת IBKR בפועל", f"{cum_ib:+.2f}%")
-            g3.metric("פער ביצוע", f"{gap_ret:+.2f}%",
-                      help="שלילי = הביצוע בפועל מפגר אחרי התיאוריה (slippage, מילויים חלקיים, עמלות)")
 
             ib_qty = {p["sym"]: p["qty"] for p in snap.get("positions", [])}
             rows, worst = [], 0.0
@@ -259,7 +252,7 @@ def render_us_section(mobile: bool = False):
 
     # ── יומן עסקאות ────────────────────────────────────────────────────────────
     st.divider()
-    st.subheader("📜 יומן עסקאות")
+    st.subheader("📜 יומן החלטות האסטרטגיה")
     if state["trades"]:
         dft = pd.DataFrame(state["trades"])[::-1].rename(columns={
             "date": "תאריך", "side": "פעולה", "sym": "מניה", "qty": "כמות",
@@ -268,7 +261,7 @@ def render_us_section(mobile: bool = False):
         st.dataframe(dft, width='stretch', hide_index=True)
     else:
         st.info("אין עסקאות עדיין.")
-    st.caption(f"עודכן: {datetime.now():%Y-%m-%d %H:%M} · תיק נייר · אינו ייעוץ השקעות")
+    st.caption(f"עודכן: {datetime.now():%Y-%m-%d %H:%M} · המדידה על חשבון IBKR · אינו ייעוץ השקעות")
 
 
 # ─── מצב עצמאי בלבד ───────────────────────────────────────────────────────────
