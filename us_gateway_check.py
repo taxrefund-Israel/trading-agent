@@ -38,6 +38,12 @@ def tg_send(text: str) -> None:
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--remind", action="store_true",
+                    help="מצב תזכורת בוקר: שולח טלגרם רק אם ה-Gateway מנותק")
+    args = ap.parse_args()
+
     connected, account = False, None
     try:
         from ib_async import IB
@@ -54,6 +60,18 @@ def main():
                 continue
     except Exception:
         pass
+
+    if args.remind:
+        # תזכורת בוקר — מטרידים רק כשצריך פעולה
+        if connected:
+            print(f"מחובר ({account}) — אין צורך בתזכורת")
+        else:
+            tg_send('⏰ <b>תזכורת יום שני</b>\n'
+                    'IB Gateway מנותק — פתח אותו והתחבר (הכניסה השבועית אחרי הסופ"ש).\n'
+                    'האיתות מגיע ~15:07 והפקודות נשלחות אוטומטית אחריו — '
+                    'בלי Gateway מחובר שום דבר לא יבוצע.')
+            print("לא מחובר — נשלחה תזכורת")
+        return
 
     if connected:
         tg_send(f'🟢 <b>בדיקת מוכנות שבועית</b>\n'
