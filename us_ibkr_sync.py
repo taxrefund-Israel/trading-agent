@@ -22,6 +22,69 @@ except Exception:
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 SNAP = os.path.join(BASE, "ibkr_snapshot.json")
+STREAK = os.path.join(BASE, "logs_us", "sync_fail_streak.json")
+ALERT_AFTER = 3   # התראה החל מ-3 כשלונות רצופים, וכל 3 נוספים
+
+
+def _tg_send(text: str) -> None:
+    import urllib.parse
+    import urllib.request
+    cfg_path = os.path.join(BASE, "telegram_config.json")
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat = os.environ.get("TELEGRAM_CHAT_ID")
+    if not (token and chat) and os.path.exists(cfg_path):
+        with open(cfg_path, encoding="utf-8") as f:
+            c = json.load(f)
+        token, chat = c.get("bot_token"), c.get("chat_id")
+    if not (token and chat):
+        return
+    data = urllib.parse.urlencode({"chat_id": chat, "text": text,
+                                   "parse_mode": "HTML"}).encode()
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{token}/sendMessage", data=data)
+    try:
+        urllib.request.urlopen(req, timeout=30)
+    except Exception as e:
+        print(f"[telegram] שליחה נכשלה: {e}")
+
+
+def _load_streak() -> int:
+    try:
+        with open(STREAK, encoding="utf-8") as f:
+            return int(json.load(f).get("streak", 0))
+    except Exception:
+        return 0
+
+
+def _save_streak(n: int) -> None:
+    os.makedirs(os.path.dirname(STREAK), exist_ok=True)
+    with open(STREAK, "w", encoding="utf-8") as f:
+        json.dump({"streak": n, "updated": datetime.now().isoformat()}, f)
+
+
+def _on_failure() -> None:
+    streak = _load_streak() + 1
+    _save_streak(streak)
+    print(f"אין חיבור ל-IB Gateway — כשלון מס' {streak} ברצף.")
+    if streak >= ALERT_AFTER and streak % ALERT_AFTER == 0:
+        last = "—"
+        try:
+            with open(SNAP, encoding="utf-8") as f:
+                last = json.load(f).get("updated", "—")
+        except Exception:
+            pass
+        _tg_send(f'🟠 <b>הסנכרון הלילי מ-IBKR נכשל {streak} לילות ברצף</b>\n'
+                 f'ה-Gateway לא היה מחובר. הדשבורד מציג נתונים מ-{last}.\n'
+                 f'פתח את IB Gateway והתחבר — הסנכרון הבא (23:30) יתעדכן אוטומטית.')
+
+
+def _on_success() -> None:
+    streak = _load_streak()
+    if streak >= ALERT_AFTER:
+        _tg_send(f'🟢 הסנכרון הלילי מ-IBKR חזר לעבוד (אחרי {streak} כשלונות רצופים). '
+                 f'הדשבורד מעודכן.')
+    if streak:
+        _save_streak(0)
 
 
 def main():
@@ -38,7 +101,7 @@ def main():
         except Exception:
             continue
     if not ib.isConnected():
-        print("אין חיבור ל-IB Gateway — ודא שהוא פתוח. יציאה.")
+        _on_failure()
         sys.exit(1)
 
     accounts = ib.managedAccounts()
@@ -92,6 +155,7 @@ def main():
     with open(SNAP, "w", encoding="utf-8") as f:
         json.dump(snap, f, ensure_ascii=False, indent=2)
     print(f"נשמר: {accounts} equity=${netliq:,.0f}, {len(positions)} פוזיציות")
+    _on_success()
 
     if not args.no_push:
         try:
