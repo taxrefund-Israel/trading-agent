@@ -20,3 +20,6 @@ streamlit*.log
 streamlit*.txt
 email_preview.html
 *.bak
+
+# מנעולי ביצוע מקומיים של ה-executor
+logs_us/*.marker
