@@ -23,3 +23,4 @@ email_preview.html
 
 # מנעולי ביצוע מקומיים של ה-executor
 logs_us/*.marker
+logs_us/sync_fail_streak.json
