@@ -297,12 +297,23 @@ def main():
 
     pull()
     if args.wait_signal > 0:
-        deadline = time.time() + args.wait_signal * 60
+        start = time.time()
+        deadline = start + args.wait_signal * 60
+        self_triggered = False
         while time.time() < deadline:
             state, _ = load_agent_state()
             if any(h["date"] == args.date for h in state.get("history", [])):
                 log("איתות היום התקבל בריפו — ממשיך.")
                 break
+            # אחרי 45 דק' של איחור במתזמן של GitHub — מפעילים את האיתות בעצמנו
+            if not self_triggered and time.time() - start > 45 * 60:
+                self_triggered = True
+                log("האיתות מאחר — מפעיל את ה-workflow ידנית (workflow_dispatch)...")
+                try:
+                    subprocess.run(["gh", "workflow", "run", "us-weekly-signals.yml"],
+                                   cwd=BASE, timeout=60)
+                except Exception as e:
+                    log(f"הפעלה ידנית נכשלה ({e}) — ממשיך להמתין למתוזמן")
             log("אין עדיין איתות להיום — ממתין 2 דקות...")
             time.sleep(120)
             pull()
