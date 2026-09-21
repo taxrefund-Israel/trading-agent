@@ -156,6 +156,163 @@ def render_us_section(mobile: bool = False):
 
     st.divider()
 
+    from backtest_us_v6_next import SECTOR
+    state_pos = state.get("positions", {})
+    snap_pos = {p["sym"]: p for p in (snap or {}).get("positions", [])}
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    trades_today = [t for t in state.get("trades", []) if t["date"] == today_str]
+
+    # ── תיק פעיל — בסגנון הדשבורד הישראלי ─────────────────────────────────────
+    REC = {
+        "core":   ("#0a3d1e", "#4ade80", "החזק"),
+        "buffer": ("#3d350a", "#fbbf24", "החזק — אזור החוצץ"),
+        "edge":   ("#4a2c0a", "#fb923c", "זהירות — קרובה לגבול"),
+        "sell":   ("#450a0a", "#f87171", "מכור בריבאלנס הקרוב"),
+    }
+
+    def _rec_for(sym):
+        if not bull:
+            return "sell", "שוק דובי — האסטרטגיה יוצאת מכל הפוזיציות לקרן כספית"
+        rk = rank_of.get(sym)
+        if rk is None:
+            return "sell", "לא בדירוג (חסרים נתונים) — תימכר בריבאלנס הקרוב"
+        if rk <= 6:
+            return "core", f"דירוג #{rk} — בליבת הטופ-6, ממשיכים להחזיק"
+        if rk <= 12:
+            return "buffer", f"דירוג #{rk} — בתוך החוצץ; מכירה רק בנפילה מתחת לדירוג 14"
+        if rk <= 14:
+            return "edge", f"דירוג #{rk} — צעד אחד מגבול המכירה (14); תימכר אם תמשיך לרדת"
+        return "sell", f"דירוג #{rk} — מתחת לגבול 14; תימכר בריבאלנס החודשי הקרוב"
+
+    if snap_pos:
+        st.subheader(f"💼 תיק פעיל ({len(snap_pos)} פוזיציות)")
+        total_val = sum((p.get("value") or 0) for p in snap_pos.values()) + (snap.get("cash") or 0)
+        for sym in sorted(snap_pos, key=lambda s: rank_of.get(s, 999)):
+            p_ = snap_pos[sym]
+            key, reason = _rec_for(sym)
+            bg, fg, rec_he = REC[key]
+            avg = p_.get("avg_cost") or 0
+            cur = p_.get("price") or 0
+            pnl_pct = p_.get("pnl_pct")
+            pnl_usd = p_.get("pnl")
+            buy_date = state_pos.get(sym, {}).get("buy_date", "—")
+            weight = (p_.get("value") or 0) / total_val * 100 if total_val else 0
+            mom_val = mom.get(sym)
+            rk = rank_of.get(sym, "—")
+            pnl_txt = f"{pnl_pct:+.1f}%" if pnl_pct is not None else "—"
+            header = (f'{sym} | כניסה: ${avg:,.2f} ({buy_date}) | '
+                      f'כעת: ${cur:,.2f} | רו"ה: {pnl_txt} | {rec_he}')
+            with st.expander(header, expanded=(key == "sell")):
+                st.markdown(
+                    f'<div style="background:{bg};color:{fg};padding:10px 16px;'
+                    f'border-radius:6px;font-weight:bold;font-size:1.05rem;">'
+                    f'{rec_he} — {reason}</div>', unsafe_allow_html=True)
+                st.markdown("")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.markdown("**מחירים ורווח**")
+                    st.markdown(f"""
+| פרמטר | ערך |
+|-------|-----|
+| מחיר כניסה | ${avg:,.2f} |
+| מחיר נוכחי | ${cur:,.2f} |
+| רו"ה % | {pnl_txt} |
+| רו"ה $ | {f'${pnl_usd:+,.0f}' if pnl_usd is not None else '—'} |
+""")
+                with c2:
+                    st.markdown("**הפוזיציה**")
+                    st.markdown(f"""
+| פרמטר | ערך |
+|-------|-----|
+| כמות | {p_.get('qty', '—'):,} |
+| שווי | ${p_.get('value') or 0:,.0f} |
+| משקל בתיק | {weight:.1f}% |
+| סקטור | {SECTOR.get(sym, '—')} |
+""")
+                with c3:
+                    st.markdown("**דירוג מומנטום**")
+                    room = (14 - rk) if isinstance(rk, int) else "—"
+                    st.markdown(f"""
+| פרמטר | ערך |
+|-------|-----|
+| דירוג נוכחי | #{rk} |
+| מומנטום 12-1 | {f'{mom_val*100:+.1f}%' if mom_val is not None else '—'} |
+| גבול מכירה | דירוג 14 |
+| מרווח עד מכירה | {room} דירוגים |
+""")
+
+        # הרכב התיק — משקלים
+        comp = {sym: (p.get("value") or 0) / total_val * 100
+                for sym, p in snap_pos.items() if total_val}
+        if snap.get("cash"):
+            comp["מזומן"] = snap["cash"] / total_val * 100
+        st.markdown("**הרכב התיק (%)**")
+        st.bar_chart(pd.Series(comp).sort_values(ascending=False), height=180)
+        st.caption(f'💵 מזומן בחשבון: ${(snap.get("cash") or 0):,.0f} · '
+                   f'עדכון אחרון: {snap.get("updated", "—")}')
+    elif snap:
+        st.info("אין פוזיציות בחשבון — התיק בקרן כספית (שוק דובי).")
+    else:
+        st.info("ההחזקות יוצגו אחרי הסנכרון הראשון מ-IBKR.")
+
+    # ── המלצות קנייה ומכירה — כמו בדשבורד הישראלי ─────────────────────────────
+    buys_today = [t for t in trades_today if t["side"] == "BUY"]
+    sells_today = [t for t in trades_today if t["side"] == "SELL"]
+
+    def _buy_section():
+        st.subheader(f"🟢 איתותי קנייה ({len(buys_today)})")
+        if buys_today:
+            for t in buys_today:
+                st.success(f'**{t["sym"]}** (דירוג #{t.get("rank", "?")}) — '
+                           f'{t["qty"]} יח׳ @ ${t["price"]:,.2f} · {t.get("reason", "")}')
+        elif not bull:
+            st.info("שוק דובי — האסטרטגיה לא קונה מניות; ההון בקרן כספית.")
+        else:
+            st.info("אין קניות השבוע — כל 6 הסלוטים מאוישים והריבאלנס הבא בתחילת החודש.")
+        # הבאות בתור — מי תיכנס אם יתפנה מקום (בכפוף לתקרת הסקטור)
+        if bull:
+            held_secs = {SECTOR.get(s, "?") for s in snap_pos}
+            queue = []
+            for s in mom.index:
+                if s in snap_pos:
+                    continue
+                sec = SECTOR.get(s, "?")
+                if sec in held_secs:
+                    continue
+                queue.append(f"{s} (#{rank_of[s]}, {sec})")
+                held_secs.add(sec)
+                if len(queue) == 3:
+                    break
+            if queue:
+                st.caption("הבאות בתור אם יתפנה סלוט: " + " · ".join(queue))
+
+    def _sell_section():
+        at_risk = [(s, rank_of.get(s)) for s in snap_pos
+                   if isinstance(rank_of.get(s), int) and rank_of[s] > 14]
+        near = [(s, rank_of.get(s)) for s in snap_pos
+                if isinstance(rank_of.get(s), int) and 13 <= rank_of[s] <= 14]
+        st.subheader(f"🔴 איתותי מכירה / זהירות ({len(sells_today) + len(at_risk)})")
+        if sells_today:
+            for t in sells_today:
+                st.error(f'**{t["sym"]}** — {t["qty"]} יח׳ @ ${t["price"]:,.2f} '
+                         f'| {t.get("pnl_pct", 0):+.1f}% | {t.get("reason", "")}')
+        for s, rk in at_risk:
+            st.error(f'**{s}** — דירוג #{rk}, מתחת לגבול 14: תימכר בריבאלנס החודשי הקרוב.')
+        for s, rk in near:
+            st.warning(f'**{s}** — דירוג #{rk}, צמוד לגבול המכירה. במעקב.')
+        if not sells_today and not at_risk and not near:
+            st.info("אין מועמדות למכירה — כל ההחזקות עמוק בתוך החוצץ.")
+
+    if mobile:
+        _buy_section()
+        _sell_section()
+    else:
+        cb, cs = st.columns(2)
+        with cb: _buy_section()
+        with cs: _sell_section()
+
+    st.divider()
+
     def _equity_and_portfolio():
         st.subheader("📈 החשבון מול המדדים")
         if snap and len(snap.get("history", [])) >= 2 and inc_eq:
@@ -172,27 +329,6 @@ def render_us_section(mobile: bool = False):
             st.line_chart(pd.DataFrame(series), height=340)
         else:
             st.info("עקומת ההון תופיע אחרי כמה סנכרונים יומיים מ-IBKR.")
-
-        st.subheader("🎯 ההחזקות בחשבון")
-        if snap and snap.get("positions"):
-            from backtest_us_v6_next import SECTOR
-            rows = []
-            for p_ in snap["positions"]:
-                rows.append({
-                    "מניה": p_["sym"], "דירוג": rank_of.get(p_["sym"], "—"),
-                    "סקטור": SECTOR.get(p_["sym"], "—"), "כמות": p_["qty"],
-                    "עלות ממוצעת": p_.get("avg_cost", "—"),
-                    "מחיר": p_.get("price", "—"), "שווי $": p_.get("value", "—"),
-                    'רו"ה %': p_.get("pnl_pct", "—"),
-                })
-            st.dataframe(pd.DataFrame(rows).sort_values("דירוג"),
-                         width='stretch', hide_index=True)
-            st.caption(f'💵 מזומן בחשבון: ${(snap.get("cash") or 0):,.0f} · '
-                       f'עדכון אחרון: {snap.get("updated", "—")}')
-        elif snap:
-            st.info("אין פוזיציות בחשבון — כנראה קרן כספית (שוק דובי).")
-        else:
-            st.info("ההחזקות יוצגו אחרי הסנכרון הראשון מ-IBKR.")
 
     def _momentum():
         st.subheader("🏁 דירוג מומנטום 12-1")
