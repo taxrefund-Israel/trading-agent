@@ -275,8 +275,24 @@ def main():
                     help="המתן עד N דקות לאיתות הענן של היום (משיכת git חוזרת)")
     args = ap.parse_args()
 
+    # רישום מלא לקובץ — הרצות מתוזמנות רצות בחלון נסתר והפלט שלהן אובד אחרת.
+    log_dir = os.path.join(BASE, "logs_us")
+    os.makedirs(log_dir, exist_ok=True)
+    logfile = open(os.path.join(log_dir, f"executor_{args.date}.log"),
+                   "a", encoding="utf-8")
+    logfile.write(f"\n=== התחלה {datetime.now():%Y-%m-%d %H:%M:%S} | "
+                  f"args={vars(args)} | cwd={os.getcwd()} | pid={os.getpid()} ===\n")
+    logfile.flush()
+    import faulthandler
+    faulthandler.enable(file=logfile)   # לוכד גם קריסות קשות (segfault/kill)
+
     def log(m):
         print(m)
+        try:
+            logfile.write(f"[{datetime.now():%H:%M:%S}] {m}\n")
+            logfile.flush()
+        except Exception:
+            pass
 
     cfg = load_cfg()
     token, chat = tg_creds()
@@ -427,4 +443,34 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        # קריסה לא צפויה: תיעוד מלא + התראת טלגרם — שלא תיעלם שוב בשקט
+        import traceback
+        tb = traceback.format_exc()
+        try:
+            crash_dir = os.path.join(BASE, "logs_us")
+            os.makedirs(crash_dir, exist_ok=True)
+            with open(os.path.join(
+                    crash_dir,
+                    f"executor_crash_{datetime.now():%Y-%m-%d_%H%M%S}.txt"),
+                    "w", encoding="utf-8") as f:
+                f.write(tb)
+        except Exception:
+            pass
+        try:
+            token, chat = tg_creds()
+            short = tb.strip().splitlines()[-1][:200]
+            data = urllib.parse.urlencode({
+                "chat_id": chat,
+                "text": f"🛑 Executor קרס: {short}\nהטרייסבק המלא בלוגים.",
+            }).encode()
+            urllib.request.urlopen(urllib.request.Request(
+                f"https://api.telegram.org/bot{token}/sendMessage", data=data),
+                timeout=30)
+        except Exception:
+            pass
+        raise
