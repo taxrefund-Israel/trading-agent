@@ -30,6 +30,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 
+# תחת pythonw אין stdout/stderr — מפנים ל-devnull כדי ש-print לא יקרוס
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
