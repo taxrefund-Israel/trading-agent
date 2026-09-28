@@ -340,14 +340,38 @@ def main():
                     f'תוך {args.wait_signal} דקות. בדוק את ריצת GitHub Actions.')
             return
 
-    # 2. חיבור ל-IB ובדיקת חשבון
+    # 2. בשבוע שקט אין צורך בכלל ב-Gateway — בודקים פקודות לפני שמתחברים
+    if not args.sync_target:
+        orders = todays_orders(args.date)
+        if not orders:
+            log(f"אין עסקאות בתאריך {args.date} — אין מה לבצע.")
+            notified = os.path.join(log_dir, f"notified_{args.date}.marker")
+            if os.path.exists(notified):
+                log("הודעת 'אין פקודות' כבר נשלחה היום — לא שולח שוב.")
+            else:
+                tg_send(token, chat,
+                        f'✋ <b>Executor — {args.date}</b>\n'
+                        f'אין פקודות לביצוע השבוע. התיק ב-IBKR נשאר ללא שינוי.')
+                with open(notified, "w") as f:
+                    f.write(datetime.now().isoformat())
+            return
+
+    # 3. חיבור ל-IB ובדיקת חשבון (רק כשיש מה לבצע)
     if args.dry_run:
         ib, accounts, is_paper = None, ["DRY-RUN"], True
     else:
-        ib, accounts, is_paper = connect_ib(cfg)
+        try:
+            ib, accounts, is_paper = connect_ib(cfg)
+        except Exception as e:
+            log(f"אין חיבור ל-IB: {e}")
+            tg_send(token, chat,
+                    f'🔌 <b>Executor — {args.date}</b>\n'
+                    f'יש פקודות לביצוע אבל אין חיבור ל-IB Gateway.\n'
+                    f'פתח את ה-Gateway והרץ שוב: run_us_executor.bat')
+            return
         log(f"מחובר ל-IB: {accounts} ({'דמו' if is_paper else 'אמיתי!'})")
 
-    # 3. בניית הפקודות
+    # 4. בניית הפקודות במצב יישור
     sync_note = ""
     if args.sync_target:
         if ib is None:
@@ -364,16 +388,6 @@ def main():
                                cwd=BASE, timeout=180)
             except Exception as e:
                 log(f"אזהרה: רענון snapshot נכשל ({e})")
-            return
-    else:
-        orders = todays_orders(args.date)
-        if not orders:
-            log(f"אין עסקאות בתאריך {args.date} — אין מה לבצע.")
-            tg_send(token, chat,
-                    f'✋ <b>Executor — {args.date}</b>\n'
-                    f'אין פקודות לביצוע השבוע. התיק ב-IBKR נשאר ללא שינוי.')
-            if ib:
-                ib.disconnect()
             return
 
     # 4. בקשת אישור בטלגרם
