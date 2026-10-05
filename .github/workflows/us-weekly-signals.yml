@@ -6,7 +6,12 @@ name: Weekly US Momentum Signals
 
 on:
   schedule:
+    # ארבעה ניסיונות בפריסה — המתזמן של GitHub מאחר ולעתים קורס (ראה 5.10.2026,
+    # כשתקלת runners הפילה את כל הריצות). הסוכן יוצא בשקט אם האיתות כבר רץ היום.
     - cron: "7 12 * * 1"
+    - cron: "7 14 * * 1"
+    - cron: "7 16 * * 1"
+    - cron: "37 18 * * 1"
   workflow_dispatch:   # הרצה ידנית מלשונית Actions
 
 permissions:

@@ -177,10 +177,14 @@ def portfolio_value(state, prices) -> float:
 
 
 # ─── לוגיקה שבועית ────────────────────────────────────────────────────────────
-def run_weekly(px: pd.DataFrame) -> dict:
+def run_weekly(px: pd.DataFrame) -> dict | None:
     today = datetime.now().strftime("%Y-%m-%d")
     month_key = today[:7]
     state = load_state()
+    # מניעת כפילות: עם כמה ריצות cron מגובות, רק הראשונה ביום פועלת
+    if any(h["date"] == today for h in state.get("history", [])):
+        print(f"האיתות של {today} כבר רץ — יציאה שקטה (ריצת גיבוי).")
+        return None
     prices = px.iloc[-1]
     rg = regime_status(px)
     bull = rg["bull"]
@@ -435,6 +439,9 @@ def main():
         px = fetch_prices()
         log(f"נתונים: {px.shape[1]} טיקרים, עד {px.index[-1]:%Y-%m-%d}")
         r = status_snapshot(px) if resend else run_weekly(px)
+        if r is None:
+            log("ריצת גיבוי — האיתות כבר רץ היום. אין הודעה.")
+            return
         log(f"אירוע: {r['event']} | משטר: {'BULL' if r['bull'] else 'BEAR'} | "
             f"תיק: ${r['pv']:,.0f} ({r['cum_pct']:+.2f}%)")
         for t in r["sells"] + r["buys"]:
