@@ -299,6 +299,12 @@ def main():
         except Exception:
             pass
 
+    # ריצה מתוזמנת (wait-signal) רלוונטית רק בימי שני — השלמת-החמצה של
+    # Windows בסוף-שבוע הפעילה איתותי סרק (11.10). ידני/יישור — תמיד מותר.
+    if args.wait_signal > 0 and datetime.now().weekday() != 0:
+        log("לא יום שני — ריצת השלמה מאוחרת של המתזמן, יציאה שקטה.")
+        return
+
     cfg = load_cfg()
     token, chat = tg_creds()
 
