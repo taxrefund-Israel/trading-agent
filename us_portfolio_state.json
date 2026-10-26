@@ -255,6 +255,15 @@
       "ndx": 29529.34375,
       "bull": true,
       "event": "status"
+    },
+    {
+      "date": "2026-10-26",
+      "value": 92352.78,
+      "spx": 7679.3798828125,
+      "dji": 52350.19921875,
+      "ndx": 29338.509765625,
+      "bull": true,
+      "event": "status"
     }
   ],
   "bull": true,
