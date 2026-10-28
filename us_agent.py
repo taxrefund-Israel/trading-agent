@@ -170,6 +170,29 @@ def do_buys(state, ranked, prices, today, reason):
     return actions
 
 
+def simulate_picks(positions, planned_sells, ranked, prices) -> list[str]:
+    """מדמה את בחירת המחליפים אחרי מכירות מתוכננות — אותה לוגיקה כמו do_buys
+    (דירוג + תקרת סקטור), בלי לבצע דבר. משמש למניעת מכירה-וקנייה-מחדש."""
+    held = [s for s in positions if s not in planned_sells]
+    sec_count: dict[str, int] = {}
+    for s in held:
+        sec = SECTOR.get(s, "?")
+        sec_count[sec] = sec_count.get(sec, 0) + 1
+    slots = TOP_N - len(held)
+    picks: list[str] = []
+    for s in ranked.index:
+        if len(picks) >= slots:
+            break
+        if s in held or pd.isna(prices.get(s)):
+            continue
+        sec = SECTOR.get(s, "?")
+        if sec_count.get(sec, 0) >= SECTOR_CAP:
+            continue
+        picks.append(s)
+        sec_count[sec] = sec_count.get(sec, 0) + 1
+    return picks
+
+
 def portfolio_value(state, prices) -> float:
     held = sum(h["qty"] * float(prices[s]) for s, h in state["positions"].items()
                if pd.notna(prices.get(s)))
@@ -213,13 +236,22 @@ def run_weekly(px: pd.DataFrame) -> dict | None:
     # 2. ריבאלנס חודשי (ריצה ראשונה בחודש, רק בשוק שורי)
     if bull and event == "status" and state["last_rebal_month"] != month_key:
         event = "monthly_rebalance"
-        for sym in list(state["positions"].keys()):
+        planned = [sym for sym in state["positions"]
+                   if (rank_of.get(sym) is None or rank_of[sym] > KEEP_RANK)
+                   and pd.notna(prices.get(sym))]
+        # מניעת תחלופת סרק (ראה 6.10: MS נמכרה ונקנתה מחדש באותו סבב):
+        # נייר שהיה נבחר מיד בחזרה כמחליף — לא נמכר כלל, ממשיכים להחזיק.
+        while planned:
+            picks = simulate_picks(state["positions"], planned, ranked, prices)
+            keep_back = [s for s in planned if s in picks]
+            if not keep_back:
+                break
+            for s in keep_back:
+                planned.remove(s)
+        for sym in planned:
             r = rank_of.get(sym)
-            if r is not None and r <= KEEP_RANK:
-                continue
-            if pd.notna(prices.get(sym)):
-                sells.append(do_sell(state, sym, float(prices[sym]),
-                                     f"נפלה לדירוג {r or '—'} (מעל {KEEP_RANK})", today))
+            sells.append(do_sell(state, sym, float(prices[sym]),
+                                 f"נפלה לדירוג {r or '—'} (מעל {KEEP_RANK})", today))
         buys = do_buys(state, ranked, prices, today, "ריבאלנס חודשי")
         state["last_rebal_month"] = month_key
     elif bull and event == "bull_entry":
