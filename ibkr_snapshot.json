@@ -35,67 +35,71 @@
     {
       "date": "2026-10-12",
       "equity": 971657.82
+    },
+    {
+      "date": "2026-10-28",
+      "equity": 948591.56
     }
   ],
-  "updated": "2026-10-12 16:23",
+  "updated": "2026-10-28 15:25",
   "account": "DUT091563",
   "is_paper": true,
-  "equity": 971657.82,
+  "equity": 948591.56,
   "cash": 8324.1,
   "positions": [
     {
       "sym": "CSCO",
       "qty": 1493,
       "avg_cost": 109.3,
-      "price": 118.32,
-      "value": 176652.0,
-      "pnl": 13463.0,
-      "pnl_pct": 8.25
+      "price": 111.77,
+      "value": 166873.0,
+      "pnl": 3683.0,
+      "pnl_pct": 2.26
     },
     {
       "sym": "MU",
       "qty": 160,
       "avg_cost": 1014.56,
-      "price": 1007.0,
-      "value": 161120.0,
-      "pnl": -1210.0,
-      "pnl_pct": -0.75
+      "price": 959.0,
+      "value": 153440.0,
+      "pnl": -8890.0,
+      "pnl_pct": -5.48
     },
     {
       "sym": "MRK",
       "qty": 1142,
       "avg_cost": 139.91,
-      "price": 145.97,
-      "value": 166698.0,
-      "pnl": 6926.0,
-      "pnl_pct": 4.33
+      "price": 140.85,
+      "value": 160851.0,
+      "pnl": 1079.0,
+      "pnl_pct": 0.67
     },
     {
       "sym": "SLB",
       "qty": 2836,
       "avg_cost": 57.65,
-      "price": 49.18,
-      "value": 139474.0,
-      "pnl": -24020.0,
-      "pnl_pct": -14.69
+      "price": 54.5,
+      "value": 154562.0,
+      "pnl": -8932.0,
+      "pnl_pct": -5.46
     },
     {
       "sym": "CAT",
       "qty": 200,
       "avg_cost": 813.64,
-      "price": 797.94,
-      "value": 159588.0,
-      "pnl": -3139.0,
-      "pnl_pct": -1.93
+      "price": 732.07,
+      "value": 146414.0,
+      "pnl": -16313.0,
+      "pnl_pct": -10.03
     },
     {
       "sym": "MS",
       "qty": 841,
       "avg_cost": 214.24,
-      "price": 190.0,
-      "value": 159790.0,
-      "pnl": -20387.0,
-      "pnl_pct": -11.31
+      "price": 188.01,
+      "value": 158116.0,
+      "pnl": -22061.0,
+      "pnl_pct": -12.24
     }
   ]
 }
