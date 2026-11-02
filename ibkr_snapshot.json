@@ -39,67 +39,80 @@
     {
       "date": "2026-10-28",
       "equity": 948591.56
+    },
+    {
+      "date": "2026-11-02",
+      "equity": 906352.17
     }
   ],
-  "updated": "2026-10-28 15:25",
+  "updated": "2026-11-02 18:07",
   "account": "DUT091563",
   "is_paper": true,
-  "equity": 948591.56,
-  "cash": 8324.1,
+  "equity": 906352.17,
+  "cash": 7855.26,
   "positions": [
     {
       "sym": "CSCO",
       "qty": 1493,
       "avg_cost": 109.3,
-      "price": 111.77,
-      "value": 166873.0,
-      "pnl": 3683.0,
-      "pnl_pct": 2.26
+      "price": 103.52,
+      "value": 154555.0,
+      "pnl": -8634.0,
+      "pnl_pct": -5.29
     },
     {
       "sym": "MU",
       "qty": 160,
       "avg_cost": 1014.56,
-      "price": 959.0,
-      "value": 153440.0,
-      "pnl": -8890.0,
-      "pnl_pct": -5.48
-    },
-    {
-      "sym": "MRK",
-      "qty": 1142,
-      "avg_cost": 139.91,
-      "price": 140.85,
-      "value": 160851.0,
-      "pnl": 1079.0,
-      "pnl_pct": 0.67
-    },
-    {
-      "sym": "SLB",
-      "qty": 2836,
-      "avg_cost": 57.65,
-      "price": 54.5,
-      "value": 154562.0,
-      "pnl": -8932.0,
-      "pnl_pct": -5.46
+      "price": 876.37,
+      "value": 140219.0,
+      "pnl": -22110.0,
+      "pnl_pct": -13.62
     },
     {
       "sym": "CAT",
       "qty": 200,
       "avg_cost": 813.64,
-      "price": 732.07,
-      "value": 146414.0,
-      "pnl": -16313.0,
-      "pnl_pct": -10.03
+      "price": 625.81,
+      "value": 125162.0,
+      "pnl": -37565.0,
+      "pnl_pct": -23.09
+    },
+    {
+      "sym": "KO",
+      "qty": 170,
+      "avg_cost": 95.09,
+      "price": 95.08,
+      "value": 16164.0,
+      "pnl": -1.0,
+      "pnl_pct": -0.01
+    },
+    {
+      "sym": "MRK",
+      "qty": 1142,
+      "avg_cost": 139.91,
+      "price": 148.36,
+      "value": 169427.0,
+      "pnl": 9656.0,
+      "pnl_pct": 6.04
+    },
+    {
+      "sym": "SLB",
+      "qty": 2836,
+      "avg_cost": 57.65,
+      "price": 53.39,
+      "value": 151414.0,
+      "pnl": -12080.0,
+      "pnl_pct": -7.39
     },
     {
       "sym": "MS",
-      "qty": 841,
+      "qty": 757,
       "avg_cost": 214.24,
-      "price": 188.01,
-      "value": 158116.0,
-      "pnl": -22061.0,
-      "pnl_pct": -12.24
+      "price": 186.98,
+      "value": 141544.0,
+      "pnl": -20637.0,
+      "pnl_pct": -12.72
     }
   ]
 }
