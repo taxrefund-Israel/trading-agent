@@ -46,23 +46,13 @@
     },
     {
       "date": "2026-11-10",
-      "equity": 850773.98
+      "equity": 850738.28
     }
   ],
-  "updated": "2026-11-10 16:57",
+  "updated": "2026-11-10 16:58",
   "account": "DUT091563",
   "is_paper": true,
-  "equity": 850773.98,
-  "cash": 830438.98,
-  "positions": [
-    {
-      "sym": "SLB",
-      "qty": 415,
-      "avg_cost": 57.65,
-      "price": 49.0,
-      "value": 20335.0,
-      "pnl": -3590.0,
-      "pnl_pct": -15.0
-    }
-  ]
+  "equity": 850738.28,
+  "cash": 850738.28,
+  "positions": []
 }
