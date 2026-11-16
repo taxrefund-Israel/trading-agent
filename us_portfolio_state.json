@@ -336,6 +336,15 @@
       "ndx": 27907.625,
       "bull": false,
       "event": "bear_exit"
+    },
+    {
+      "date": "2026-11-16",
+      "value": 85945.69,
+      "spx": 7416.58984375,
+      "dji": 51608.171875,
+      "ndx": 27197.15234375,
+      "bull": false,
+      "event": "status"
     }
   ],
   "bull": false,
