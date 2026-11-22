@@ -1,9 +1,0 @@
-name: mmf-probe (temporary)
-on: workflow_dispatch
-jobs:
-  probe:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          curl -s -m 20 -A "trading-agent/1.0" -o f.html -w "funder %{http_code} %{size_download}\n" https://www.funder.co.il/fund/5140785; grep -c '"fundNum":5140785' f.html; head -c 300 f.html
-          curl -s -m 20 -o g.html -w "globes %{http_code} %{size_download}\n" https://www.globes.co.il/portal/
