@@ -25,7 +25,7 @@ for sym in TA125_UNIVERSE:
     except Exception: pass
 
 regime = classify_regime(idx); p = REGIME_PARAMS[regime]
-positions, cash, bond = load_state()
+positions, cash, bond, _ = load_state()
 pv = cash + bond + sum(pos["qty"] * float(stock_data[s]["Close"].iloc[-1])
                        for s, pos in positions.items() if s in stock_data)
 print("="*64)

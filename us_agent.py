@@ -51,6 +51,8 @@ TG_CONFIG  = os.path.join(BASE, "telegram_config.json")
 # קרן כספית דולרית ספציפית לחניית מזומן (הזולה בקטגוריה הנקובה, 07/2026)
 MMF_REC = ('איילון כספית דולרית נקובה · מס׳ קרן 5139076 · ד"נ 0.13%\n'
            '  (חלופה בברוקר אמריקאי: SGOV — iShares 0-3 Month Treasury ETF)')
+MMF_FEE      = 0.0013   # דמי הניהול של הקרן המומלצת
+MMF_FALLBACK = 0.037    # תשואה שנתית ברוטו לגיבוי, אם ^IRX לא נטען
 
 
 def lan_ip() -> str:
@@ -68,7 +70,7 @@ def lan_ip() -> str:
 # ─── נתונים ───────────────────────────────────────────────────────────────────
 def fetch_prices() -> pd.DataFrame:
     """מחירי סגירה מתואמים ~420 ימי מסחר אחורה לכל היקום + מדדים."""
-    tickers = UNIVERSE + ["^GSPC", "^DJI", "^NDX"]
+    tickers = UNIVERSE + ["^GSPC", "^DJI", "^NDX", "^IRX"]  # ^IRX = תשואת אג"ח 13 שבועות
     df = yf.download(tickers, period="2y", interval="1d",
                      auto_adjust=True, progress=False)["Close"]
     df.index = pd.DatetimeIndex([d.replace(tzinfo=None) for d in df.index])
@@ -96,6 +98,36 @@ def regime_status(px: pd.DataFrame) -> dict:
         out[f"{key}_bull"] = c > sma
     out["bull"] = out["spx_bull"] and out["ndx_bull"]
     return out
+
+
+def mmf_annual_yield(px: pd.DataFrame) -> float:
+    """תשואה שנתית נטו של קרן כספית דולרית: תשואת T-Bill ל-3 חודשים (^IRX)
+    פחות דמי ניהול. קרן כספית נקובה עוקבת בפועל אחרי הריבית הקצרה."""
+    gross = MMF_FALLBACK
+    if "^IRX" in px.columns:
+        s = px["^IRX"].dropna()
+        if len(s) and 0 < float(s.iloc[-1]) < 20:
+            gross = float(s.iloc[-1]) / 100
+    return max(gross - MMF_FEE, 0.0)
+
+
+def accrue_cash(state: dict, today: str, annual: float) -> float:
+    """צובר ריבית קרן כספית על המזומן מהתאריך האחרון שנצבר ועד היום (ימים
+    קלנדריים). בפעם הראשונה — מתאריך העסקה האחרונה, כי מאז המזומן לא זז.
+    מחזיר את סכום הריבית שנוסף."""
+    last = state.get("cash_accrual_date")
+    if last is None:
+        trades = state.get("trades") or []
+        last = trades[-1]["date"] if trades else today
+    days = (datetime.strptime(today, "%Y-%m-%d")
+            - datetime.strptime(last[:10], "%Y-%m-%d")).days
+    interest = 0.0
+    if days > 0 and state["cash"] > 0:
+        interest = state["cash"] * ((1 + annual) ** (days / 365) - 1)
+        state["cash"] += interest
+        state["interest_earned"] = state.get("interest_earned", 0.0) + interest
+    state["cash_accrual_date"] = max(last[:10], today)
+    return interest
 
 
 # ─── סטייט ────────────────────────────────────────────────────────────────────
@@ -209,6 +241,8 @@ def run_weekly(px: pd.DataFrame) -> dict | None:
         print(f"האיתות של {today} כבר רץ — יציאה שקטה (ריצת גיבוי).")
         return None
     prices = px.iloc[-1]
+    mmf_yield = mmf_annual_yield(px)
+    interest = accrue_cash(state, today, mmf_yield)  # לפני כל קנייה/מכירה
     rg = regime_status(px)
     bull = rg["bull"]
     ranked = momentum_ranks(px)
@@ -286,6 +320,8 @@ def run_weekly(px: pd.DataFrame) -> dict | None:
         "positions": state["positions"], "prices": prices,
         "rank_of": rank_of, "ranked": ranked,
         "tax_paid": state["tax_paid"],
+        "interest": interest, "mmf_yield": mmf_yield,
+        "interest_total": state.get("interest_earned", 0.0),
     }
 
 
@@ -372,6 +408,9 @@ def build_message(r: dict) -> str:
     cash_disp = (snap.get("cash") if snap and snap.get("cash") is not None
                  else r["cash"] * k)
     L.append(f'💵 מזומן/כספית: ${cash_disp:,.0f}')
+    if r.get("interest_total"):
+        L.append(f'📈 ריבית כספית שנצברה (נייר): ${r["interest_total"]:,.0f}'
+                 f' · תשואה נוכחית {r.get("mmf_yield", 0)*100:.2f}% שנתי')
     # המלצת קרן כספית ספציפית — ביציאה דובית או כשיש מזומן משמעותי בצד
     if r["event"] == "bear_exit" or r["cash"] > r["pv"] * 0.10:
         L.append(f'🏦 לחניית המזומן: {MMF_REC}')
@@ -431,6 +470,9 @@ def status_snapshot(px: pd.DataFrame) -> dict:
     """בונה דוח סטטוס מהסטייט הקיים בלי לבצע עסקאות ובלי לשנות את הקובץ."""
     state = load_state()
     prices = px.iloc[-1]
+    mmf_yield = mmf_annual_yield(px)
+    today = datetime.now().strftime("%Y-%m-%d")
+    interest = accrue_cash(state, today, mmf_yield)  # בזיכרון בלבד — לא נשמר
     rg = regime_status(px)
     ranked = momentum_ranks(px)
     rank_of = {s: r + 1 for r, s in enumerate(ranked.index)}
@@ -451,6 +493,8 @@ def status_snapshot(px: pd.DataFrame) -> dict:
         "positions": state["positions"], "prices": prices,
         "rank_of": rank_of, "ranked": ranked,
         "tax_paid": state.get("tax_paid", 0.0),
+        "interest": interest, "mmf_yield": mmf_yield,
+        "interest_total": state.get("interest_earned", 0.0),
     }
 
 

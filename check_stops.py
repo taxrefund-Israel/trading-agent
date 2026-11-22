@@ -14,7 +14,7 @@ end = datetime.today() + timedelta(days=1); start = end - timedelta(days=FETCH_D
 idx = yf.Ticker(INDEX_TICKER).history(start=start, end=end)
 idx.index = pd.DatetimeIndex([d.replace(tzinfo=None) for d in idx.index])
 regime = classify_regime(idx); p = REGIME_PARAMS[regime]
-positions, cash, bond = load_state()
+positions, cash, bond, _ = load_state()
 print(f"REGIME={regime} | init_stop={p['init_stop']*100:.0f}% | atr_mult={p['atr_mult']} | min_hold={p['min_hold']}\n")
 print(f"{'נייר':10} {'כניסה':>9} {'נוכחי':>9} {'P&L%':>7} {'סטופ':>9} {'נפרץ?':>6} {'ימים':>6} {'נמכר?':>22}")
 print("-"*86)

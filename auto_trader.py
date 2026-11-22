@@ -24,7 +24,20 @@ INITIAL_CASH     = 100_000.0
 COMMISSION       = 0.0008
 TAX_RATE         = 0.25
 RS_LOOKBACK      = 63
-BOND_YIELD       = 0.045 / 252      # קרן כספית — עוקבת אחרי ריבית קצרה (~4.5% שנתי)
+# קרן כספית שקלית — תשואה שנתית נטו ≈ ריבית בנק ישראל פחות דמי ניהול.
+# ריבית בנק ישראל 3.25% (הוחזקה באוקטובר 2026), ד"נ מגדל כספית 0.06%.
+# לעדכן בכל החלטת ריבית. הצבירה לפי ימים קלנדריים (קרן כספית צוברת גם
+# בסופ"ש ובחגים), ולא לפי מספר הריצות — כדי שימים בלי ריצה לא "יבלעו" תשואה.
+MMF_ANNUAL_YIELD = 0.0325 - 0.0006
+
+
+def mmf_growth(from_date: str | None, to_date: str) -> float:
+    """מקדם הצבירה של הקרן הכספית בין שני תאריכים (ימים קלנדריים)."""
+    if not from_date:
+        return 1.0
+    days = (datetime.strptime(to_date, "%Y-%m-%d")
+            - datetime.strptime(from_date[:10], "%Y-%m-%d")).days
+    return (1 + MMF_ANNUAL_YIELD) ** (max(days, 0) / 365)
 RISK_PER_TRADE   = 0.015
 MAX_POS_PCT      = 0.20
 
@@ -180,12 +193,14 @@ def load_state():
     if snap:
         cash       = snap["cash"]
         bond_value = snap["bonds"]
+        last_date  = snap["date"]
     else:
         # First run — start fresh
         cash       = INITIAL_CASH
         bond_value = 0.0
+        last_date  = None
 
-    return positions, cash, bond_value
+    return positions, cash, bond_value, last_date
 
 # ─── Save state to DB ─────────────────────────────────────────────────────────
 def record_trade(sym, action, price, qty, reason, pnl_pct, pnl_nis, tax_nis, regime, trade_date=None):
@@ -490,7 +505,7 @@ def run(for_date=None, notify=False):
         return
 
     # Load state
-    positions, cash, bond_value = load_state()
+    positions, cash, bond_value, last_snap_date = load_state()
     L(f"  מצב קיים: {len(positions)} פוזיציות פתוחות, מזומן ₪{cash:,.0f}, קרן כספית ₪{bond_value:,.0f}")
 
     # Fetch market data
@@ -558,8 +573,12 @@ def run(for_date=None, notify=False):
         for s, pos in positions.items() if s in stock_data
     )
 
-    # Bond daily yield
-    bond_value *= (1 + BOND_YIELD)
+    # צבירת תשואת הקרן הכספית מאז הצילום הקודם (ימים קלנדריים)
+    growth = mmf_growth(last_snap_date, today_str)
+    if growth > 1.0:
+        L(f"  קרן כספית: צבירה ₪{bond_value * (growth - 1):,.2f} "
+          f"({MMF_ANNUAL_YIELD*100:.2f}% שנתי, מאז {last_snap_date})")
+    bond_value *= growth
 
     # Bond rebalance
     bond_action = None   # ייכלל בהמלצות הקנייה/מכירה היומיות
