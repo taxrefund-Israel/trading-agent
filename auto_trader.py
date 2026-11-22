@@ -82,7 +82,7 @@ def mmf_growth_actual(last_snap_date: str | None, today_str: str):
         ratio = got[0] / prev["price"]
         if 0.99 < ratio < 1.02:   # הגנה מפענוח שגוי של הדף
             growth, source = ratio, "fund"
-            note = (f"שער {prev['price']:.2f} ({prev['price_date']}) → "
+            note = (f"שער {prev['price']:.2f} ({prev['price_date']}) -> "
                     f"{got[0]:.2f} ({got[1]})")
     if growth is None:
         growth = mmf_growth(last_snap_date, today_str)
