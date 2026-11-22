@@ -17,17 +17,18 @@ import yfinance as yf
 
 from db import init_db, get_conn
 from guardrails import can_buy
-from securities import BOND_INSTRUMENTS
+from securities import BOND_INSTRUMENTS, MONEY_FUND
+import re, urllib.request
 
 # ─── Strategy config (v9-13) ──────────────────────────────────────────────────
 INITIAL_CASH     = 100_000.0
 COMMISSION       = 0.0008
 TAX_RATE         = 0.25
 RS_LOOKBACK      = 63
-# קרן כספית שקלית — תשואה שנתית נטו ≈ ריבית בנק ישראל פחות דמי ניהול.
-# ריבית בנק ישראל 3.25% (הוחזקה באוקטובר 2026), ד"נ מגדל כספית 0.06%.
-# לעדכן בכל החלטת ריבית. הצבירה לפי ימים קלנדריים (קרן כספית צוברת גם
-# בסופ"ש ובחגים), ולא לפי מספר הריצות — כדי שימים בלי ריצה לא "יבלעו" תשואה.
+# קרן כספית שקלית: הצבירה לפי השער בפועל של הקרן המומלצת (MONEY_FUND)
+# מפאנדר. גיבוי כשהשער לא נטען: ריבית בנק ישראל פחות דמי ניהול, לפי ימים
+# קלנדריים. ריבית בנק ישראל 3.25% (הוחזקה באוקטובר 2026), ד"נ 0.06% —
+# לעדכן בהחלטות ריבית (משמש רק כגיבוי).
 MMF_ANNUAL_YIELD = 0.0325 - 0.0006
 
 
@@ -38,6 +39,63 @@ def mmf_growth(from_date: str | None, to_date: str) -> float:
     days = (datetime.strptime(to_date, "%Y-%m-%d")
             - datetime.strptime(from_date[:10], "%Y-%m-%d")).days
     return (1 + MMF_ANNUAL_YIELD) ** (max(days, 0) / 365)
+
+
+FUND_PAGE = "https://www.funder.co.il/fund/{}"
+
+
+def fetch_fund_price(fund_num: str) -> tuple[float, str] | None:
+    """שער הקנייה העדכני של הקרן הכספית מדף הקרן בפאנדר (מותר לסריקה לפי
+    robots.txt שלהם). מחזיר (שער, תאריך השער) או None אם לא נטען."""
+    try:
+        req = urllib.request.Request(FUND_PAGE.format(fund_num),
+                                     headers={"User-Agent": "trading-agent/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            html = r.read().decode("utf-8", "replace")
+        i = html.find(f'"fundNum":{fund_num}')
+        if i < 0:
+            return None
+        seg = html[i:i + 20000]
+        m = re.search(r'"buyPrice":([0-9.]+)', seg)
+        d = re.search(r'"lastUpdate":"([0-9]{4}-[0-9]{2}-[0-9]{2})', seg)
+        if not (m and d):
+            return None
+        price = float(m.group(1))
+        return (price, d.group(1)) if price > 0 else None
+    except Exception:
+        return None
+
+
+def mmf_growth_actual(last_snap_date: str | None, today_str: str):
+    """מקדם צבירה לפי התשואה בפועל של הקרן המומלצת: שער היום / השער מהריצה
+    הקודמת. אם השער לא נטען (חסימה / שינוי בדף) — גיבוי לפי ריבית בנק ישראל,
+    והעוגן מתאפס כדי שהתקופה לא תיספר פעמיים כשהשער יחזור.
+    מחזיר (מקדם, מקור, תיאור)."""
+    fund_num = MONEY_FUND[1]
+    got = fetch_fund_price(fund_num)
+    conn = get_conn()
+    prev = conn.execute(
+        "SELECT price, price_date FROM mmf_prices WHERE date < ? "
+        "ORDER BY date DESC LIMIT 1", (today_str,)).fetchone()
+    growth, source, note = None, "rate", ""
+    if got and prev and prev["price"]:
+        ratio = got[0] / prev["price"]
+        if 0.99 < ratio < 1.02:   # הגנה מפענוח שגוי של הדף
+            growth, source = ratio, "fund"
+            note = (f"שער {prev['price']:.2f} ({prev['price_date']}) → "
+                    f"{got[0]:.2f} ({got[1]})")
+    if growth is None:
+        growth = mmf_growth(last_snap_date, today_str)
+        note = (f"גיבוי: ריבית {MMF_ANNUAL_YIELD*100:.2f}% שנתי"
+                + ("" if got else " — שער הקרן לא נטען"))
+    conn.execute(
+        "INSERT OR REPLACE INTO mmf_prices (date, fund, price, price_date, source) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (today_str, fund_num, got[0] if got else None,
+         got[1] if got else None, source))
+    conn.commit()
+    conn.close()
+    return growth, source, note
 RISK_PER_TRADE   = 0.015
 MAX_POS_PCT      = 0.20
 
@@ -573,11 +631,9 @@ def run(for_date=None, notify=False):
         for s, pos in positions.items() if s in stock_data
     )
 
-    # צבירת תשואת הקרן הכספית מאז הצילום הקודם (ימים קלנדריים)
-    growth = mmf_growth(last_snap_date, today_str)
-    if growth > 1.0:
-        L(f"  קרן כספית: צבירה ₪{bond_value * (growth - 1):,.2f} "
-          f"({MMF_ANNUAL_YIELD*100:.2f}% שנתי, מאז {last_snap_date})")
+    # צבירת תשואת הקרן הכספית מאז הריצה הקודמת — לפי שער הקרן בפועל
+    growth, mmf_src, mmf_note = mmf_growth_actual(last_snap_date, today_str)
+    L(f"  קרן כספית: צבירה ₪{bond_value * (growth - 1):,.2f} | {mmf_note}")
     bond_value *= growth
 
     # Bond rebalance

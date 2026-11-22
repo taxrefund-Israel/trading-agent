@@ -1,0 +1,16 @@
+name: mmf-probe (temporary)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q yfinance pandas ta
+      - run: |
+          python -c "
+          import auto_trader as A, us_agent as U
+          print('FUND', A.fetch_fund_price('5140785'))
+          s=U.fetch_mmf_series(); print('SGOV', None if s is None else (s.index[-1], float(s.iloc[-1])))
+          "

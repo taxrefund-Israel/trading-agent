@@ -57,6 +57,14 @@ def init_db():
         notes           TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS mmf_prices (
+        date            TEXT PRIMARY KEY,       -- תאריך הריצה
+        fund            TEXT,                   -- מספר הקרן
+        price           REAL,                   -- שער קנייה (NULL = לא נטען → עוגן מתאפס)
+        price_date      TEXT,                   -- תאריך השער אצל המקור
+        source          TEXT                    -- fund / rate
+    );
+
     CREATE TABLE IF NOT EXISTS guardrail_log (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
         ts              TEXT NOT NULL,
